@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
@@ -7,27 +7,66 @@
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="description" content="Homepage of Han Tian">
+    <meta name="author" content="Han Tian">
     <meta name="viewport" content="width=device-width">
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
   </head>
   <body>
-    <div class="wrapper">
-      <header>
-        <h1>Han Tian 田晗</h1>
-        <img src="./new-avatar.jpg" alt="Logo" width="200"/>
-        <h3>Assistant Professor</h3>
-        <h3>The University of Science and Technology of China</h3>
-        
-        <p>henrytian@ustc.edu.cn</p>
-        
-      </header>
-      <section>
-        <p>I am currently an assistant professor in the University of Science and Technology of China. In 2023, I received my Ph.D. degree in Hong Kong University of Science and Technology, supervised by Prof. Kai Chen and Prof. Qiang Yang. Before that, I received my B.Eng in biology engineering in 2012 from Beihang University and M.Eng. in computer science from SYSU. My research interests are machine learning and its various applications in all possible aspects, including networking, system and privacy computing.</p>
-        <!-- <p style="color: red; font-weight: bold;">We are looking for PhD/Master students and interns in the area of machine learning, system and networking. If you are interested, please feel free to contact me.</p>
-         -->
-        <h1> Publications (<a href="https://scholar.google.com/citations?user=XRZMwv4AAAAJ&amp;hl=en&amp;authuser=1">Google Scholar</a>)</h1>
+    <table summary="Table for page layout." id="tlayout">
+      <tr valign="top">
+        <td id="layout-menu">
+          <div class="menu-category">Welcome</div>
+          <div class="menu-item"><a href="index.html" class="current">Home</a></div>
+          <div class="menu-item"><a href="#publications">Publications</a></div>
+          <div class="menu-item"><a href="#services">Professional Services</a></div>
+          <div class="menu-item"><a href="https://scholar.google.com/citations?user=XRZMwv4AAAAJ&amp;hl=en&amp;authuser=1">Google Scholar</a></div>
+        </td>
+
+        <td id="layout-content">
+          <div id="toptitle">
+            <h1>Han Tian 田晗</h1>
+          </div>
+
+          <table class="imgtable profile-table">
+            <tr>
+              <td>
+                <img src="./new-avatar.jpg" alt="Han Tian" class="profile-photo" />
+              </td>
+              <td class="profile-info">
+                <p>
+                  <b class="profile-title">Assistant Professor</b><br />
+                  <a href="https://www.ustc.edu.cn/">The University of Science and Technology of China</a><br />
+                  <br />
+                  Email: <a href="mailto:henrytian@ustc.edu.cn">henrytian@ustc.edu.cn</a><br />
+                  Find me on:
+                  <a href="https://scholar.google.com/citations?user=XRZMwv4AAAAJ&amp;hl=en&amp;authuser=1">Google Scholar</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+
+          <h2>About Me</h2>
+          <p>I am currently an assistant professor in the University of Science and Technology of China. In 2023, I received my Ph.D. degree in Hong Kong University of Science and Technology, supervised by Prof. Kai Chen and Prof. Qiang Yang. Before that, I received my B.Eng in biology engineering in 2012 from Beihang University and M.Eng. in computer science from SYSU. My research interests are machine learning and its various applications in all possible aspects, including networking, system and privacy computing.</p>
+
+          <h2>News</h2>
+          <ul id="news-list">
+            <li><p>Jul. 2026&nbsp;&nbsp; ARIES accepted to ICNP 2026.</p></li>
+            <li><p>2026&nbsp;&nbsp; FCP accepted to SoCC 2026.</p></li>
+            <li><p>2026&nbsp;&nbsp; Unlocking Full Efficiency of Token Filtering in Large Language Model Training accepted to ICLR 2026.</p></li>
+            <li><p>2026&nbsp;&nbsp; PolicyCache accepted to NSDI 2026.</p></li>
+            <li><p>2026&nbsp;&nbsp; Learn-to-Probe and MFS accepted to EuroSys 2026.</p></li>
+            <li><p>2026&nbsp;&nbsp; CascadeNet accepted to NSDI 2026.</p></li>
+            <li><p>2025&nbsp;&nbsp; Coflow Scheduling for LLM Training and MixNet accepted to SIGCOMM 2025.</p></li>
+            <li><p>2025&nbsp;&nbsp; GREEN accepted to NSDI 2025.</p></li>
+          </ul>
+          <a href="#" id="toggle-news" onclick="toggleNews(); return false;">More</a>
+
+          <!-- <p style="color: red; font-weight: bold;">We are looking for PhD/Master students and interns in the area of machine learning, system and networking. If you are interested, please feel free to contact me.</p>
+          -->
+          <h2 id="publications"> Publications (<a href="https://scholar.google.com/citations?user=XRZMwv4AAAAJ&amp;hl=en&amp;authuser=1">Google Scholar</a>)</h2>
         <h3 id="conference"> Conference </h3>
           <ul>
 <li>
@@ -268,7 +307,7 @@
             </li>
           </ul>
 
-        <h1>Experiences and Services</h1>
+        <h2 id="services">Experiences and Services</h2>
         <ul>
           <li> Journal Reviewer: IEEE Transactions on Networking (ToN), IEEE Transactions on Mobile Computing (TMC), Frontiers of Computer Science (FCS)</li>
           <li> Eurosys 2026 Program Committee Member</li>
@@ -288,11 +327,25 @@
             《智能计算软件优化》(Software Optimization for Intelligent Computing), 2025<br />
           </li>
         </ul>
-      </section>
-      <footer>
-        <p><small>&mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
-      </footer>
-    </div>
-    <script src="javascripts/scale.fix.js"></script>
+        <div id="footer">
+          <div id="footer-text">Last updated: Jul. 2026</div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+    <script>
+      function toggleNews() {
+        const newsList = document.getElementById('news-list');
+        const toggleLink = document.getElementById('toggle-news');
+        const isExpanded = toggleLink.textContent === 'Less';
+
+        for (let i = 5; i < newsList.children.length; i++) {
+          newsList.children[i].style.display = isExpanded ? 'none' : 'list-item';
+        }
+
+        toggleLink.textContent = isExpanded ? 'More' : 'Less';
+      }
+    </script>
   </body>
 </html>
