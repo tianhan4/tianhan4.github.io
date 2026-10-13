@@ -16,8 +16,9 @@
 @media(max-width:620px){.shell{padding:14px 12px}.heading{display:block}h1{font-size:24px}.heading .equation{margin-top:9px}.tabs{gap:5px}.method{display:block;padding:8px}.method .num{display:none}.method strong{font-size:12px}.method small{font-size:10px}.toolbar{gap:6px;padding:10px}.toolbar button{padding:7px 10px;font-size:12px}.toolbar .speed{margin-left:0}.program-body{display:block}.matrix-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.matrix-card:last-child{grid-column:1/-1;max-width:260px;width:100%;justify-self:center}.matrix-title span{display:none}.live-metrics{grid-template-columns:repeat(2,1fr);gap:10px}.compare-grid{grid-template-columns:1fr}.comparison-heading{display:block}.reg-flow{grid-template-columns:1fr 15px 1fr 24px 1.1fr;gap:3px}.shared-grids{gap:10px}.config{gap:8px}.config label{font-size:11px}.insight{display:block}.insight strong{display:block;margin-bottom:4px}.cell{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-</head>
-<body><nav aria-label="Course navigation" style="max-width:1440px;margin:0 auto;padding:14px 24px 0;font:13px -apple-system,BlinkMacSystemFont,sans-serif"><a href="../" style="color:#527bbd;text-decoration:none">← Courses · 智能计算软件优化</a></nav>
+<style>.tab,.takeaway{transition:background .2s,border-color .2s,box-shadow .2s}.tab strong{overflow-wrap:anywhere}.language-bar{max-width:1520px;margin:0 auto;padding:14px 32px 0;display:flex;justify-content:flex-end;align-items:center;gap:16px;font:13px system-ui,sans-serif}.course-back{margin-right:auto;text-decoration:none;color:#527bbd}.language-switch{display:flex;flex-shrink:0;border:1px solid #d9d1e3;border-radius:7px;overflow:hidden}.language-switch button{border:0;border-radius:0;background:white;color:#655a73;font:12px system-ui,sans-serif;padding:7px 12px;min-height:32px;cursor:pointer}.language-switch button[aria-pressed=true]{background:#6540a4;color:white}.language-switch button:focus-visible{outline:2px solid #9364ca;outline-offset:-3px}html[lang=en] .method strong{font-size:13px}html[lang=en] .same{max-width:230px}html[lang=en] .svg-small{font-size:10px}html[lang=en] .scene-label{font-size:13px}html[lang=en] .svg-formula{font-size:13px}html[lang=en] .selected-label{font-size:10px}@media(max-width:620px){.language-bar{padding:12px 12px 0;align-items:flex-start}.course-back{font-size:11px;max-width:65%}.language-switch button{padding:7px 9px}html[lang=en] .method strong{font-size:11px}html[lang=en] .method small{font-size:10px}}
+</style></head>
+<body><div class="language-bar"><a class="course-back" href="../" data-zh="← 课程 · 智能计算软件优化" data-en="← Courses · Software Optimization for Intelligent Computing">← 课程 · 智能计算软件优化</a><div class="language-switch" role="group" aria-label="Language / 语言"><button type="button" data-lang="zh" lang="zh-CN">中文</button><button type="button" data-lang="en" lang="en">English</button></div></div><div id="localized-content">
 <main class="shell" id="matmul-lab">
   <div class="eyebrow">GPU · 矩阵乘法实验室</div>
   <header class="heading"><div><h1>同一个乘法，三种数据路径</h1><p class="subhead">跟着一行代码，看数据从全局存储走到片上，再变成输出。</p></div><div class="equation" id="equation"></div></header>
@@ -54,7 +55,18 @@
   <details><summary>计数口径与真实 GPU 的区别</summary><ul><li>C = AᵀB 模式直接展示 Aᵀ：画面坐标 Aᵀ[i,k] 对应原数组 A[k,i]，共享输入片 sAT 也按这一转置视图显示。这里只改变呈现与伪代码记法，不执行额外转置搬运，也不表示物理内存布局发生变化。</li><li>所有版本计算同一组矩阵，并实际在本页计算出 C；一次 FMA 计为 2 FLOPs。当前动画累计数由执行事件逐项累加，完整对比由对应循环结构推导。</li><li>“全局输入读取”按线程请求的标量元素计数，不是内存事务数。仅在忽略 L1/L2 命中、访存合并和其他开销的模型中，将其乘以 4 字节近似为 FP32 的 HBM 输入流量；真实 HBM 流量需要测量。</li><li>三种版本都以寄存器保存累加器。第二种进一步让每线程计算 V×V 个输出；第三种还让 Block 协作加载、复用共享内存中的输入块。共享内存与硬件自动管理的缓存不是同一概念。</li><li>画面按 Block、线程依次展开，便于观察；真实 GPU 会并行或交错执行。一次动画步可能代表多个线程的协作加载，或 V² 次标量 FMA，步数与播放速度不代表运行时间。</li><li>寄存器数量只计操作数与累加器的数据槽，不含索引等临时值，也不是编译器实际分配量。教学模型省略寄存器溢出、访存事务、bank conflict、流水线重叠、Tensor Core 和边界处理；N、L、V、S 采用整除设置。共享内存加载省略中间搬运寄存器，不能据此推断使用了异步拷贝。</li><li>增大 V 会增加每线程寄存器需求；增大 L 或 S 会增加共享内存占用。这些资源可能限制 Occupancy，因此读取减少不等于同倍数加速。</li></ul><p>参考：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-in-matrix-multiplication-c-ab" target="_blank" rel="noreferrer">NVIDIA CUDA Best Practices · 矩阵乘法</a> · <a href="https://developer.nvidia.com/blog/cutlass-linear-algebra-cuda/" target="_blank" rel="noreferrer">NVIDIA CUTLASS · 分层分块</a></p></details>
   <div class="footer"><span>FP32 教学模型 · 可离线运行 · 运算结果与读写计数可复核</span><span>键盘：← 上一步　→ 下一步　空格 播放 / 暂停</span></div>
 </main>
-<script>
+</div><script>
+
+const CourseI18n=(()=>{
+ const key='courses-language';let saved='';try{saved=localStorage.getItem(key)}catch{}
+ const requested=new URLSearchParams(location.search).get('lang');
+ const lang=['zh','en'].includes(requested)?requested:(saved==='en'?'en':'zh');
+ document.documentElement.lang=lang==='en'?'en':'zh-CN';
+ try{localStorage.setItem(key,lang)}catch{}
+ return {lang,key};
+})();
+if(CourseI18n.lang==='en'){document.getElementById('localized-content').innerHTML="\n<main class=\"shell\" id=\"matmul-lab\">\n  <div class=\"eyebrow\">GPU · Matrix multiplication lab<\/div>\n  <header class=\"heading\"><div><h1>One multiplication, three data paths<\/h1><p class=\"subhead\">Follow the code as inputs move from global memory to on-chip storage and become outputs.<\/p><\/div><div class=\"equation\" id=\"equation\"><\/div><\/header>\n  <div class=\"config\" aria-label=\"Matrix and tile settings\">\n    <label>Operation<select id=\"operation\"><option value=\"atb\">C = AᵀB (course slides)<\/option><option value=\"ab\">C = AB<\/option><\/select><\/label>\n    <label>Matrix size N<select id=\"size\"><option>4<\/option><option selected>8<\/option><\/select><\/label>\n    <label>Block size L<select id=\"block\"><option>2<\/option><option selected>4<\/option><\/select><\/label>\n    <label>Thread tile size V<select id=\"thread\"><option>1<\/option><option selected>2<\/option><\/select><\/label>\n    <label>k tiling S<select id=\"slice\"><option>1<\/option><option selected>2<\/option><option>4<\/option><\/select><\/label>\n    <label class=\"format\"><input type=\"checkbox\" id=\"show-values\" checked> Show values<\/label>\n  <\/div>\n  <div class=\"tabs\" role=\"tablist\" aria-label=\"Matrix multiplication implementations\">\n    <button type=\"button\" class=\"method\" id=\"tab-naive\" role=\"tab\" aria-selected=\"true\" aria-controls=\"demo\" data-method=\"naive\"><span class=\"num\">01<\/span><span><strong>Naive matrix multiplication<\/strong><small>One thread accumulates one output<\/small><\/span><\/button>\n    <button type=\"button\" class=\"method\" id=\"tab-register\" role=\"tab\" aria-selected=\"false\" aria-controls=\"demo\" data-method=\"register\"><span class=\"num\">02<\/span><span><strong>Register tiling<\/strong><small>One thread reuses a set of operands<\/small><\/span><\/button>\n    <button type=\"button\" class=\"method\" id=\"tab-shared\" role=\"tab\" aria-selected=\"false\" aria-controls=\"demo\" data-method=\"shared\"><span class=\"num\">03<\/span><span><strong>Shared memory + register tiling<\/strong><small>A whole block reuses one input tile<\/small><\/span><\/button>\n  <\/div>\n  <section id=\"demo\" role=\"tabpanel\" aria-labelledby=\"tab-naive\">\n    <div class=\"toolbar\"><button id=\"restart\" title=\"Return to the start\">↺ Reset<\/button><button id=\"previous\">Previous<\/button><button id=\"play\" class=\"primary\">▶ Play<\/button><button id=\"next\">Next →<\/button><button id=\"next-output\">Next output tile<\/button><button id=\"finish\">Show final result<\/button><label class=\"speed\">Speed<select id=\"speed\"><option value=\"1400\">Slow<\/option><option value=\"650\" selected>Normal<\/option><option value=\"170\">Fast<\/option><option value=\"80\">Fast forward (each 16 steps)<\/option><\/select><\/label><\/div>\n    <div class=\"timeline\"><label for=\"position\">Progress<\/label><input id=\"position\" type=\"range\" min=\"0\" max=\"100\" value=\"0\"><output id=\"step-count\" for=\"position\"><\/output><\/div>\n    <div class=\"workspace\">\n      <section class=\"panel program\"><div class=\"panel-head\"><h2>What the code is doing<\/h2><span>Teaching pseudocode<\/span><\/div><div class=\"program-body\"><div class=\"code\" id=\"code\"><\/div><div><div class=\"context\" id=\"context\"><\/div><div class=\"explain\" aria-live=\"polite\" aria-atomic=\"true\"><div id=\"phase\" class=\"phase\"><\/div><div id=\"sentence\" class=\"sentence\"><\/div><div id=\"delta\" class=\"delta\"><\/div><\/div><p class=\"scope\" id=\"scope\"><\/p><\/div><\/div><\/section>\n      <section class=\"panel hardware\"><div class=\"panel-head\"><h2>Where data lives and computation happens<\/h2><label class=\"heat-toggle\"><input type=\"checkbox\" id=\"heat\">Show repeated reads<\/label><\/div><div class=\"memory\">\n        <div class=\"layer-heading\"><span class=\"name\">① HBM / Global arrays · logical view<\/span><span class=\"hint\" id=\"input-legend\">Blue: read Aᵀ Green: read B Orange: current output<\/span><\/div>\n        <div class=\"matrix-row\" id=\"hbm\"><\/div>\n        <div class=\"transfer\" id=\"transfer\"><strong id=\"route\"><\/strong><small>Actual path includes L2/L1; cache hits are not simulated<\/small><\/div>\n        <div class=\"onchip-grid\"><div class=\"shared-layer\" id=\"shared-layer\"><div class=\"layer-heading\"><span class=\"name\">② Shared memory · explicit reuse within a block<\/span><span id=\"shared-size\" class=\"hint\"><\/span><\/div><div id=\"shared-content\"><\/div><\/div>\n        <div class=\"register-layer\"><div class=\"layer-heading\"><span class=\"name\">③ Registers · private to the current thread<\/span><span class=\"hint\" id=\"reg-size\"><\/span><\/div><div class=\"reg-flow\"><div><div class=\"reg-label\" id=\"a-label\">a<\/div><div id=\"reg-a\"><\/div><\/div><span class=\"operator\">×<\/span><div><div class=\"reg-label\" id=\"b-label\">b<\/div><div id=\"reg-b\"><\/div><\/div><span class=\"operator\">+=<\/span><div><div class=\"reg-label\" id=\"c-label\">accumulator c<\/div><div id=\"reg-c\"><\/div><\/div><\/div><div class=\"math-detail\" id=\"math\"><\/div><\/div>\n        <\/div><div class=\"compute-unit\" id=\"compute\"><span class=\"dot\"><\/span><strong>CUDA core / FMA<\/strong><span id=\"compute-text\"><\/span><\/div>\n        <div class=\"legend\"><span><i style=\"background:var(--a)\"><\/i><span id=\"a-legend\">Aᵀ operands<\/span><\/span><span><i style=\"background:var(--b)\"><\/i>B operands<\/span><span><i style=\"background:#d6ad74\"><\/i>Current c accumulator<\/span><span><i style=\"background:#93cdb6\"><\/i>Written C<\/span><span>Hover over a cell for coordinates and values<\/span><\/div>\n      <\/div><div class=\"live-metrics\" id=\"live-metrics\"><\/div><\/section>\n    <\/div>\n  <\/section>\n  <section class=\"comparison\"><div class=\"comparison-heading\"><h2>Compare the complete computation<\/h2><span id=\"same-work\"><\/span><\/div><div class=\"compare-grid\" id=\"comparison\"><\/div><div class=\"insight\"><strong id=\"insight-title\"><\/strong><span id=\"insight-text\"><\/span><\/div><\/section>\n  <details><summary>Counting model and real GPU behavior<\/summary><ul><li>C = AᵀB mode displays Aᵀ: Display coordinates Aᵀ[i,k] correspond to the original array A[k,i], shared input tile sAT uses the same transposed view. Only the display and pseudocode notation change; no extra transpose transfer is performed, and the physical memory layout is not changed.<\/li><li>All three versions use the same inputs and compute C; one FMA counts as 2 FLOPs. Live totals accumulate from execution events; full-run comparisons follow from the loop structure.<\/li><li>“global input reads” count scalar elements requested by threads, rather than memory transactions. Only when ignoring L1/L2 cache hits, memory coalescing and other overheads can this count be multiplied by 4 bytes to approximate FP32 HBM input traffic. Actual HBM traffic must be measured.<\/li><li>All three versions keep accumulators in registers. Register tiling assigns each thread V×V outputs; the third version also lets the Block cooperatively load and reuse input tiles in shared memory. Shared memory is distinct from hardware-managed caches.<\/li><li>The display unfolds blocks and threads sequentially for observation. Real GPU execution is parallel or interleaved. One animation step can represent a cooperative load by multiple threads, or V² scalar FMAs. Step counts and playback speeds do not represent execution time.<\/li><li>Register counts cover only operand and accumulator slots, excluding temporary indices, and are not compiler allocation counts. This model omits register spills, memory transactions, bank conflict, pipeline overlap, Tensor Core and boundary handling; N, L, V, S are exactly divisible. Shared-memory loads omit intermediate transfer registers; this does not imply asynchronous copies.<\/li><li>Increasing V increases per-thread register use; increasing L or S increases shared-memory use. These resources may limit occupancy, so fewer reads do not imply a proportional speedup.<\/li><\/ul><p>References:<a href=\"https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-in-matrix-multiplication-c-ab\" target=\"_blank\" rel=\"noreferrer\">NVIDIA CUDA Best Practices · Matrix multiplication<\/a> · <a href=\"https://developer.nvidia.com/blog/cutlass-linear-algebra-cuda/\" target=\"_blank\" rel=\"noreferrer\">NVIDIA CUTLASS · Hierarchical tiling<\/a><\/p><\/details>\n  <div class=\"footer\"><span>FP32 teaching model · offline ready · results and read/write counts can be checked<\/span><span>Keyboard: ← Previous → Next Space Play / Pause<\/span><\/div>\n<\/main>\n";document.title="Matrix multiplication: from code to data flow";}
+
 'use strict';
 /* The event trace is the single source for code position, cell highlights and counters. */
 const MatmulEngine = (() => {
@@ -112,6 +124,121 @@ const MatmulEngine = (() => {
   return {modes,arrays,indexA,reference,build,fresh,apply,totals,aTileIndex};
 })();
 window.MatmulEngine=MatmulEngine;
+if(CourseI18n.lang==='en'){
+
+(() => {
+  const root=document.getElementById('matmul-lab'),$=id=>document.getElementById(id),fmt=x=>Number(x).toLocaleString('en-US');
+  let cfg={n:8,L:4,V:2,S:2,op:'atb',mode:'naive'},events=[],state,pos=0,timer=null,checkpoints=new Map();
+  const names={naive:'Naive',register:'Register tiling',shared:'Shared memory + register tiling'};
+  function clone(s){return JSON.parse(JSON.stringify(s));}
+  function lines(){const at=cfg.op==='atb';if(cfg.mode==='shared')return [
+    'Locate Block output tile C[br:br+L, bc:bc+L]',
+    'Each thread handles rows × cols(V × V)',
+    'c[V, V] = 0  // private registers for each thread',
+    'for ko = 0 .. N-1 step S:',
+    at?'  Cooperative load sAT = Aᵀ[br:br+L, ko:ko+S]':'  Cooperative load sA = A[br:br+L, ko:ko+S]',
+    '  Cooperative load sB = B[ko:ko+S, bc:bc+L]',
+    '  __syncthreads()  // load complete',
+    '  for ki = 0 .. S-1:',
+    at?'    a = sAT[local_rows, ki]':'    a = sA[local_rows, ki]',
+    '    b = sB[ki, local_cols]',
+    '    c += outer(a, b)  // V² FMAs',
+    '  __syncthreads()  // consumption complete',
+    'Each thread stores C[rows, cols] = c'];
+    if(cfg.mode==='register')return ['Locate Block output region','Each thread handles rows × cols(V × V)','c[V, V] = 0','for k = 0 .. N-1:',at?'  a[V] = Aᵀ[rows, k]':'  a[V] = A[rows, k]','  b[V] = B[k, cols]','  c += outer(a, b)  // V² FMAs','C[rows, cols] = c'];
+    return ['Locate Block output region','Each thread handles one (i, j)','c = 0  // register accumulator','for k = 0 .. N-1:',at?'  a = Aᵀ[i, k]':'  a = A[i, k]','  b = B[k, j]','  c += a * b  // 1 FMA','C[i, j] = c'];
+  }
+  const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function reset(){pause();events=MatmulEngine.build(cfg);state=MatmulEngine.fresh(cfg);pos=0;checkpoints=new Map([[0,clone(state)]]);$('code').innerHTML=lines().map((l,i)=>`<div class="code-line" data-line="${i}"><span class="ln">${i+1}</span><span class="src">${esc(l)}</span></div>`).join('');$('position').max=events.length-1;renderComparison();render();}
+  function seek(p){p=Math.max(0,Math.min(events.length-1,Number(p)));if(p<pos){let q=Math.floor(p/80)*80;while(!checkpoints.has(q))q-=80;state=clone(checkpoints.get(q));pos=q;}while(pos<p){pos++;MatmulEngine.apply(state,events[pos],cfg);if(pos%80===0)checkpoints.set(pos,clone(state));}render();if(pos===events.length-1)pause();}
+  function pause(){if(timer!==null)clearTimeout(timer);timer=null;$('play').textContent='▶ Play';$('play').setAttribute('aria-pressed','false');}
+  function schedule(){timer=setTimeout(()=>{seek(pos+($('speed').value==='80'?16:1));if(pos<events.length-1)schedule();},Number($('speed').value));}
+  function play(){if(timer!==null){pause();return;}if(pos===events.length-1)seek(0);$('play').textContent='Ⅱ Pause';$('play').setAttribute('aria-pressed','true');schedule();}
+  function cells(rows,cols,values,opts={}){let html=`<div class="matrix-grid" style="--cols:${cols}" role="img" aria-label="${esc(opts.label||'matrix')}"><span class="axis"></span>`;for(let c=0;c<cols;c++)html+=`<span class="axis">${opts.colBase===undefined?c:opts.colBase+c}</span>`;for(let r=0;r<rows;r++){html+=`<span class="axis side">${opts.rowBase===undefined?r:opts.rowBase+r}</span>`;for(let c=0;c<cols;c++){const q=r*cols+c,val=values[q],cl=opts.classes?opts.classes(q,r,c):'',heat=opts.heat?opts.heat[q]:0,tip=`${opts.symbol||''}[${r+(opts.rowBase||0)},${c+(opts.colBase||0)}] = ${val===null||val===undefined?'not written yet':val}${opts.heat?'; total reads '+heat+' times':''}`;html+=`<span class="cell ${cl}" title="${esc(tip)}">${val===null||val===undefined?'·':val}${opts.heat&&$('heat').checked&&heat?`<i class="heat" style="width:${Math.min(100,heat/cfg.n*100)}%"></i>`:''}</span>`;}}return html+'</div>';}
+  function operand(vals,rows,cols,kind,focus){return `<div class="operand-grid ${kind}${focus?' focus':''}" style="--cols:${cols}">${Array.from({length:rows*cols},(_,q)=>`<span class="cell">${vals[q]??'·'}</span>`).join('')}</div>`;}
+  function info(e){const {kind,tr,tc,k,ko,br,bc}=e,{n,L,V,S,mode}=cfg,v=mode==='naive'?1:V;const aName=cfg.op==='atb'?'Aᵀ':'A',sharedName=cfg.op==='atb'?'sAT':'sA';const aCoord=`${aName}[${tr}${v>1?'…'+(tr+v-1):''}, ${k}]`;const bCoord=`B[${k}, ${tc}${v>1?'…'+(tc+v-1):''}]`;const blockid=`(${br/L}, ${bc/L})`;
+    const map={
+      ready:['Ready to execute','Click Next to see code lines and matrix cells change together.','All outputs match; the difference is how inputs are transferred and reused.','No transfer yet'],
+      block:['Locate the output region',`Block ${blockid} covers ${L}×${L} outputs; each thread handles ${v}×${v} outputs.`,'Blocks are shown in order for teaching; real blocks can run in parallel or be interleaved.','Locate the thread and output'],
+      init:['Initialize accumulators',`The current thread clears ${v*v} register accumulators before traversing the full k dimension.`,'Nothing has been stored in HBM yet; C still displays empty dots.','Initialize in registers'],
+      initblock:['Initialize all thread accumulators',`Each of the ${(L/v)**2} threads holds ${v}×${v} private accumulators.`,`The tile has ${L*L} accumulators distributed across its threads.`,'Initialize in registers'],
+      stage:['Start a k tile',`Prepare two shared-memory input tiles for reduction range k = ${ko}…${ko+S-1}.`,'The previous tiles have been consumed; the same two buffers can now be reused.','Prepare shared-memory buffers'],
+      tileA:[`Cooperatively load ${aName}`,`The block transfers ${L*S} elements of ${aName} into ${sharedName}, displayed as a ${L}×${S} tile.`,`Global input reads +${L*S}; each element is loaded once in this stage.`,`Global ${aName} → shared ${sharedName}`],
+      tileB:['Cooperatively load B',`The block transfers ${L*S} elements of B into sB for reuse across threads.`,`Global input reads +${L*S}; both shared tiles occupy ${2*L*S*4} B.`,'Global B → shared sB'],
+      barrierLoad:['Barrier: wait for loads','All threads must finish their cooperative loads before shared-memory reads are safe.','__syncthreads() coordinates threads within a block, rather than the entire GPU.','Block synchronization · loads complete'],
+      globalA:[`Read ${aName} operands`,`${aCoord} → the current thread’s a registers.`,`Global input reads +${v} FP32 elements (${v*4} B in the model).`,`Global ${aName} → registers a`],
+      globalB:['Read B operands',`${bCoord} → the current thread’s b registers.`,`Global input reads +${v}; now ${2*v} inputs can support ${v*v} FMAs.`,'Global B → registers b'],
+      sharedA:[`Read from ${sharedName}`,`Read ${v} elements of ${aName} from column ${k-ko} of ${sharedName} into the current thread’s a registers.`,`Shared-memory reads +${v}; no new global input reads in this step.`,`Shared ${sharedName} → registers a`],
+      sharedB:['Read from sB',`Read ${v} elements of B from shared memory into the current thread’s b registers.`,`Shared-memory reads +${v}; other threads can reuse the same shared data.`,'Shared sB → registers b'],
+      fma:['Multiply and accumulate',v===1?`k = ${k}: a CUDA core uses a and b to update one register accumulator.`:`k = ${k}: the outer product of ${v} values in a and ${v} values in b updates ${v}×${v} accumulators.`,`FMA +${v*v}, FLOPs +${2*v*v}; no new memory reads in this step.`,'Register operands → CUDA cores → accumulators'],
+      barrierUse:['Barrier: wait for consumption','All threads must finish using the shared tiles before the next tiles overwrite these buffers.','This prevents data from being overwritten while other threads are still reading it.','Block synchronization · consumption complete'],
+      store:['Store thread outputs',`The k reduction is complete. Store this thread’s ${v*v} results in global array C.`,`Output stores +${v*v}; green cells indicate finished results.`,'Register accumulators → global C'],
+      storeblock:['Store block outputs',`All threads store their results in C, completing the ${L}×${L} output tile of block ${blockid}.`,`Output stores +${L*L}; each output is stored once.`,'Thread accumulators → global C'],
+      done:['Computation complete',state.C.every((x,i)=>x===state.expected[i])?'Every output matches the direct matrix multiplication reference.':'Output validation failed. Check the execution model.',`Totals: ${fmt(state.fma)} FMAs; ${fmt(state.g)} global input elements read; ${fmt(state.w)} output elements stored.`,'Complete · outputs verified']
+    };return map[kind];
+  }
+
+  function render(){
+    const e=events[pos],{n,L,S,mode,V}=cfg,v=mode==='naive'?1:V,{br,bc,tr,tc,k,ko,kind}=e;const t=MatmulEngine.totals(cfg),text=info(e);
+    $('equation').textContent=cfg.op==='atb'?'C = AᵀB':'C = AB';$('demo').setAttribute('aria-labelledby','tab-'+mode);
+    root.querySelectorAll('.method').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.method===mode)));
+    root.querySelectorAll('.code-line').forEach(el=>el.classList.toggle('active',Number(el.dataset.line)===e.line));
+    $('context').innerHTML=[`Block (${br/L}, ${bc/L})`,`Output rows ${tr}…${tr+v-1}`,`Output columns ${tc}…${tc+v-1}`,`k = ${k}`,mode==='shared'?`ko = ${ko} · ki = ${k-ko}`:''].filter(Boolean).map(x=>`<span class="pill">${x}</span>`).join('');
+    $('phase').textContent=text[0];$('phase').classList.toggle('finished',kind==='done');$('sentence').textContent=text[1];$('delta').textContent=text[2];$('route').textContent=text[3];$('transfer').classList.toggle('hot',/global|shared[AB]|tile[AB]|store/.test(kind));
+    $('scope').textContent=mode==='shared'?`Current block: ${(L/v)**2} threads; each thread handles ${v}×${v} outputs. Threads are shown one by one reusing the same shared data.`:`Current block: ${mode==='naive'?L*L:(L/v)**2} threads; one thread finishes its k loop before the next thread is shown.`;
+    const ha=new Set(),hb=new Set(),sa=new Set(),sb=new Set();
+    if(kind==='globalA')for(let y=0;y<v;y++)ha.add(MatmulEngine.indexA(cfg,tr+y,k));
+    if(kind==='globalB')for(let x=0;x<v;x++)hb.add(k*n+tc+x);
+    if(kind==='tileA')for(let i=br;i<br+L;i++)for(let kk=ko;kk<ko+S;kk++)ha.add(MatmulEngine.indexA(cfg,i,kk));
+    if(kind==='tileB')for(let kk=ko;kk<ko+S;kk++)for(let j=bc;j<bc+L;j++)hb.add(kk*n+j);
+    if(kind==='sharedA'||kind==='fma')for(let y=0;y<v;y++)sa.add(MatmulEngine.aTileIndex(cfg,e,tr+y,k));
+    if(kind==='sharedB'||kind==='fma')for(let x=0;x<v;x++)sb.add((k-ko)*L+tc-bc+x);
+    const at=cfg.op==='atb',aName=at?'Aᵀ':'A';
+    const transposeIndex=q=>(q%n)*n+Math.floor(q/n);
+    const aView=at?state.A.map((_,q)=>state.A[transposeIndex(q)]):state.A;
+    const aHeat=at?state.heatA.map((_,q)=>state.heatA[transposeIndex(q)]):state.heatA;
+    const aHighlights=at?new Set([...ha].map(transposeIndex)):ha;
+    $('input-legend').textContent=`Blue: read ${aName} Green: read B Orange: current output`;$('a-legend').textContent=`${aName} operands`;
+    const hbmCards=[[aName,aView,aHighlights,'read-a',aHeat],['B',state.B,hb,'read-b',state.heatB],['C',state.C,null,'',null]].map(([symbol,values,hi,cl,heat])=>{
+      const classes=(q,r,c)=>{if(symbol!=='C')return hi.has(q)?cl:'';let out=values[q]!==null?'done ':'';if(kind!=='ready'&&kind!=='done'&&r>=br&&r<br+L&&c>=bc&&c<bc+L)out+='in-block ';if(kind!=='done'&&kind!=='ready'&&r>=tr&&r<tr+v&&c>=tc&&c<tc+v)out+='target ';if((kind==='store'&&r>=tr&&r<tr+v&&c>=tc&&c<tc+v)||(kind==='storeblock'&&r>=br&&r<br+L&&c>=bc&&c<bc+L))out+='written ';return out;};
+      return `<div class="matrix-card"><div class="matrix-title"><strong>${symbol} <span>${n} × ${n}</span></strong><span>${symbol==='C'?'Output matrix':symbol==='Aᵀ'?'Transposed view · row i, column k':'Input matrix'}</span></div>${cells(n,n,values,{symbol,label:symbol+' matrix',classes,heat})}<div class="matrix-foot">${symbol==='C'?`Written ${state.w} / ${n*n}`:`Total read: ${fmt(heat.reduce((a,b)=>a+b,0))} elements`}</div></div>`;
+    });$('hbm').innerHTML=hbmCards.join('');
+    $('shared-layer').classList.toggle('inactive',mode!=='shared');$('shared-size').textContent=mode==='shared'?`${2*L*S*4} B / Block`:'Unused';
+    if(mode==='shared'){
+      const ar=L,ac=S,sharedName=at?'sAT':'sA';
+      const sourceIndex=q=>at?(q%S)*L+Math.floor(q/S):q;
+      const sharedView=Array.from({length:L*S},(_,q)=>state.sA[sourceIndex(q)]);
+      $('shared-content').innerHTML=`<div class="shared-grids"><div><div class="matrix-title"><strong>${sharedName} · ${ar}×${ac}</strong></div>${cells(ar,ac,sharedView,{symbol:sharedName,label:sharedName+' shared input tile',classes:q=>kind==='tileA'?'read-a':sa.has(sourceIndex(q))?'read-a':''})}</div><div><div class="matrix-title"><strong>sB · ${S}×${L}</strong></div>${cells(S,L,state.sB,{symbol:'sB',classes:q=>kind==='tileB'?'read-b':sb.has(q)?'read-b':''})}</div></div><div class="shared-foot">k = ${ko}…${ko+S-1} · ${(L/v)**2} threads cooperatively load and share · accumulated ${state.sync} block barriers</div>`;
+    }else $('shared-content').innerHTML='<div class="shared-empty">This version loads directly from global arrays into registers without shared-memory input tiles.</div>';
+    const cvals=[];for(let y=0;y<v;y++)for(let x=0;x<v;x++)cvals.push(state.acc[(tr+y)*n+tc+x]);
+    $('reg-a').innerHTML=operand(state.a,v,1,'a',kind==='globalA'||kind==='sharedA');$('reg-b').innerHTML=operand(state.b,1,v,'b',kind==='globalB'||kind==='sharedB');$('reg-c').innerHTML=operand(cvals,v,v,'c',kind==='fma');
+    $('a-label').textContent=`a · ${v}×1`;$('b-label').textContent=`b · 1×${v}`;$('c-label').textContent=`c · ${v}×${v}`;$('reg-size').textContent=`${v*v} accumulators + ${2*v} operands`;
+    $('math').textContent=kind==='fma'?`c[0,0]: ${state.previous} + ${state.a[0]} × ${state.b[0]} = ${cvals[0]}${v>1?`(this step: ${v*v} FMAs)`:''}`:kind==='done'?'Full C matches the reference element by element':`c corresponds to global C[${tr}:${tr+v}, ${tc}:${tc+v}], stored after accumulation`;
+    $('compute').classList.toggle('active',kind==='fma');$('compute-text').textContent=kind==='fma'?`This step executes ${v*v} FMAs to update register c`:'No multiply-add in this step';
+    $('live-metrics').innerHTML=[['Global input reads',state.g,t.g,'elements'],['Shared-memory reads',state.sh,t.sh,'elements'],['Accumulated multiply-adds',state.fma,t.fma,'FMA'],['Output stores',state.w,n*n,'elements']].map(([label,value,total,unit])=>`<div class="metric"><span class="label">${label}</span><span class="value">${fmt(value)}</span><span class="unit">/ ${fmt(total)} ${unit}</span></div>`).join('');
+    $('position').value=pos;$('step-count').textContent=`${fmt(pos)} / ${fmt(events.length-1)} steps`;$('previous').disabled=pos===0;$('next').disabled=pos===events.length-1;$('finish').disabled=pos===events.length-1;$('next-output').disabled=pos===events.length-1;
+    $('insight-title').textContent=mode==='naive'?'Independent input reads per output':mode==='register'?'Reuse within each thread':'Reuse across threads';
+    $('insight-text').textContent=mode==='naive'?`Each k uses 2 inputs to update 1 output; different threads request the same inputs again. ${n}×${n} outputs read a total of ${fmt(t.g)} input elements.`:mode==='register'?`Each k reads 2V = ${2*V} inputs to perform V² = ${V*V} FMAs. Model input reads are 1/${V} of naive reads, at the cost of more registers.`:`Each k tile cooperatively loads 2LS = ${2*L*S} inputs to perform L²S = ${L*L*S} FMAs. Model input reads are 1/${L} of naive reads. S changes buffer size and synchronization frequency, but not total input reads.`;
+    root.classList.toggle('no-values',!$('show-values').checked);
+  }
+  function renderComparison(){
+    const base=MatmulEngine.totals(cfg,'naive');$('same-work').textContent=`Same output C · all ${fmt(base.fma)} FMAs · ${fmt(2*base.fma)} FLOPs · FP32`;
+    $('comparison').innerHTML=MatmulEngine.modes.map(mode=>{const t=MatmulEngine.totals(cfg,mode),v=mode==='naive'?1:cfg.V;return `<article class="compare-card ${mode===cfg.mode?'selected':''}"><div class="top"><h3>${names[mode]}</h3><span class="ratio">Input reads ${base.g/t.g===1?'baseline':'reduced to 1/'+base.g/t.g}</span></div><div class="read-count">${fmt(t.g)}<small>global input elements</small></div><div class="bar-track" aria-label="Input reads relative to baseline ${Math.round(t.g/base.g*100)}%"><div class="bar" style="width:${t.g/base.g*100}%"></div></div><dl><dt>Input-read formula</dt><dd>${mode==='naive'?'2N³':mode==='register'?'2N³ / V':'2N³ / L'}</dd><dt>Model total bytes (including C stores)</dt><dd>${fmt(t.bytes)} B</dd><dt>Model arithmetic intensity</dt><dd>${t.ai.toFixed(3)} FLOP/B</dd><dt>Data registers per thread</dt><dd>${v*v} + ${2*v} FP32</dd><dt>Shared memory / Block</dt><dd>${t.shared} B</dd><dt>Total block barriers</dt><dd>${t.sync}</dd></dl></article>`;}).join('');
+  }
+  root.querySelectorAll('[data-method]').forEach(b=>b.addEventListener('click',()=>{cfg.mode=b.dataset.method;reset();}));
+  $('operation').addEventListener('change',()=>{cfg.op=$('operation').value;reset();});
+  for(const [id,key] of [['size','n'],['block','L'],['thread','V'],['slice','S']])$(id).addEventListener('change',()=>{cfg[key]=Number($(id).value);reset();});
+  $('next').addEventListener('click',()=>{pause();seek(pos+1);});$('previous').addEventListener('click',()=>{pause();seek(pos-1);});$('restart').addEventListener('click',reset);$('play').addEventListener('click',play);$('finish').addEventListener('click',()=>{pause();seek(events.length-1);});
+  $('next-output').addEventListener('click',()=>{pause();const target=events.findIndex((e,i)=>i>pos&&(e.kind==='store'||e.kind==='storeblock'));seek(target<0?events.length-1:target);});
+  $('position').addEventListener('input',()=>{pause();seek(Number($('position').value));});$('heat').addEventListener('change',render);$('show-values').addEventListener('change',render);$('speed').addEventListener('change',()=>{if(timer!==null){pause();play();}});
+  document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();play();}else if(e.key==='ArrowRight'){e.preventDefault();pause();seek(pos+1);}else if(e.key==='ArrowLeft'){e.preventDefault();pause();seek(pos-1);}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+  window.MatmulLab={get config(){return {...cfg}},get position(){return pos},get length(){return events.length},get state(){return clone(state)},seek,setConfig(patch){Object.assign(cfg,patch);$('operation').value=cfg.op;$('size').value=cfg.n;$('block').value=cfg.L;$('thread').value=cfg.V;$('slice').value=cfg.S;reset();},get event(){return {...events[pos]}}};
+  reset();
+})();
+
+}else{
+
 (() => {
   const root=document.getElementById('matmul-lab'),$=id=>document.getElementById(id),fmt=x=>Number(x).toLocaleString('en-US');
   let cfg={n:8,L:4,V:2,S:2,op:'atb',mode:'naive'},events=[],state,pos=0,timer=null,checkpoints=new Map();
@@ -221,6 +348,34 @@ window.MatmulEngine=MatmulEngine;
   window.MatmulLab={get config(){return {...cfg}},get position(){return pos},get length(){return events.length},get state(){return clone(state)},seek,setConfig(patch){Object.assign(cfg,patch);$('operation').value=cfg.op;$('size').value=cfg.n;$('block').value=cfg.L;$('thread').value=cfg.V;$('slice').value=cfg.S;reset();},get event(){return {...events[pos]}}};
   reset();
 })();
-</script>
-</body>
-</html>
+
+}
+
+(()=>{
+ const $=id=>document.getElementById(id),api=window.MatmulLab||window.BlockFlow,storageKey='course-state:'+location.pathname;
+ let snapshot;try{snapshot=JSON.parse(sessionStorage.getItem(storageKey));sessionStorage.removeItem(storageKey)}catch{}
+ if(snapshot&&api){
+  if(window.MatmulLab)api.setConfig(snapshot.config);
+  else {api.pause();$('blocks').value=String(8/snapshot.config.br);$('blocks').dispatchEvent(new Event('change'));api.setMode(snapshot.config.mode)}
+  if(snapshot.speed){$('speed').value=snapshot.speed;$('speed').dispatchEvent(new Event('change'))}
+  for(const id of ['heat','show-values'])if($(id)&&id in snapshot){$(id).checked=snapshot[id];$(id).dispatchEvent(new Event('change'))}
+  api.seek(snapshot.position);
+  if(window.BlockFlow&&snapshot.svgTime!=null)$('canvas').querySelector('svg').setCurrentTime(snapshot.svgTime);
+  if(snapshot.playing&&$('play').getAttribute('aria-pressed')!=='true')$('play').click();
+  document.querySelectorAll('details').forEach((el,i)=>el.open=!!snapshot.details?.[i]);
+  requestAnimationFrame(()=>scrollTo(snapshot.scrollX||0,snapshot.scrollY||0));
+ }
+ document.querySelectorAll('[data-zh]').forEach(el=>el.textContent=el.dataset[CourseI18n.lang]);
+ document.querySelectorAll('a.course-back,a.open-demo,.resource h3 a').forEach(el=>{const u=new URL(el.href);u.searchParams.set('lang',CourseI18n.lang);el.href=u.href});
+ document.querySelectorAll('[data-lang]').forEach(button=>{
+  button.setAttribute('aria-pressed',String(button.dataset.lang===CourseI18n.lang));
+  button.addEventListener('click',()=>{
+   if(button.dataset.lang===CourseI18n.lang)return;
+   if(api){const state={config:api.config,position:api.position,speed:$('speed').value,playing:$('play').getAttribute('aria-pressed')==='true',svgTime:window.BlockFlow?$('canvas').querySelector('svg').getCurrentTime():null,details:[...document.querySelectorAll('details')].map(el=>el.open),scrollX,scrollY};for(const id of ['heat','show-values'])if($(id))state[id]=$(id).checked;try{sessionStorage.setItem(storageKey,JSON.stringify(state))}catch{}}
+   try{localStorage.setItem(CourseI18n.key,button.dataset.lang)}catch{}
+   const url=new URL(location.href);url.searchParams.set('lang',button.dataset.lang);location.replace(url);
+  });
+ });
+})();
+
+</script></body></html>

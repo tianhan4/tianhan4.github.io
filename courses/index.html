@@ -1,55 +1,62 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Courses | Han Tian</title>
-  <meta name="description" content="Interactive course materials by Han Tian: GPU matrix multiplication and FlashAttention.">
-  <meta name="author" content="Han Tian">
-  <link rel="stylesheet" href="../stylesheets/styles.css">
-  <link rel="stylesheet" href="courses.css">
-</head>
-<body>
-  <table summary="Table for page layout." id="tlayout">
-    <tr valign="top">
-      <td id="layout-menu">
-        <nav aria-label="Main navigation">
-          <div class="menu-category">Welcome</div>
-          <div class="menu-item"><a href="../index.html">Home</a></div>
-          <div class="menu-item"><a href="../index.html#publications">Publications</a></div>
-          <div class="menu-item"><a href="../index.html#services">Professional Services</a></div>
-          <div class="menu-item"><a href="./" class="current" aria-current="page">Courses</a></div>
-          <div class="menu-item"><a href="https://scholar.google.com/citations?user=XRZMwv4AAAAJ&amp;hl=en&amp;authuser=1">Google Scholar</a></div>
-        </nav>
-      </td>
-      <td id="layout-content">
-        <main>
-          <div id="toptitle"><h1>Courses</h1></div>
-          <p class="intro">Interactive teaching materials by Han Tian.</p>
-          <section aria-labelledby="course-title" lang="zh-CN">
-            <h2 id="course-title">智能计算软件优化</h2>
-            <p class="course-subtitle">Software Optimization for Intelligent Computing</p>
-            <p>第五章 · GPU 架构与计算优化</p>
-            <div class="resource-list">
-              <article class="resource" aria-labelledby="matmul-title">
-                <div class="resource-heading"><span class="resource-number">01</span><div><p class="resource-type">交互演示 · 矩阵乘法</p><h3 id="matmul-title"><a href="demos/matmul.html">GPU 矩阵乘法：从朴素计算到分块复用</a></h3></div></div>
-                <p>对比朴素版、寄存器分块、共享内存＋寄存器分块，逐步观察矩阵访问、数据复用和输出形成的过程。</p>
-                <ul class="topics"><li>HBM 与片上存储</li><li>分块与复用</li><li>Aᵀ 过程视图</li></ul>
-                <div class="resource-actions"><a class="open-demo" href="demos/matmul.html">打开演示 →</a><a href="demos/matmul.html" download="矩阵乘法交互演示.html">下载 HTML</a></div>
-              </article>
-              <article class="resource" aria-labelledby="attention-title">
-                <div class="resource-heading"><span class="resource-number">02</span><div><p class="resource-type">交互演示 · Attention</p><h3 id="attention-title"><a href="demos/flashattention.html">FlashAttention 与 FlashAttention-2：矩阵子块搬运</a></h3></div></div>
-                <p>在完整 Q、Kᵀ、V 矩阵上选中实际子块，跟随元素从 HBM 进入 GPU 片上区域，观察局部计算、在线 Softmax 与 O 的逐块写回。</p>
-                <ul class="topics"><li>标准 Attention 对照</li><li>在线 Softmax</li><li>FA1 / FA2 分工</li></ul>
-                <div class="resource-actions"><a class="open-demo" href="demos/flashattention.html">打开演示 →</a><a href="demos/flashattention.html" download="FlashAttention交互演示.html">下载 HTML</a><a href="demos/flashattention-detail.html">数值与代码版</a></div>
-              </article>
-            </div>
-            <aside class="usage-note"><strong>使用方式</strong><p>直接在浏览器中打开；支持播放、暂停和逐步观察。下载后的 HTML 可离线运行。演示用于理解数据流与计算方式，播放速度不代表真实 GPU 性能。</p></aside>
-          </section>
-        </main>
-        <div id="footer"><div id="footer-text"><a href="../index.html">Han Tian · Home</a></div></div>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Courses | Han Tian</title><meta name="description" content="Bilingual interactive course materials: GPU matrix multiplication and FlashAttention."><meta name="author" content="Han Tian"><link rel="stylesheet" href="../stylesheets/styles.css"><link rel="stylesheet" href="courses.css"><style>.tab,.takeaway{transition:background .2s,border-color .2s,box-shadow .2s}.tab strong{overflow-wrap:anywhere}.language-bar{max-width:1520px;margin:0 auto;padding:14px 32px 0;display:flex;justify-content:flex-end;align-items:center;gap:16px;font:13px system-ui,sans-serif}.course-back{margin-right:auto;text-decoration:none;color:#527bbd}.language-switch{display:flex;flex-shrink:0;border:1px solid #d9d1e3;border-radius:7px;overflow:hidden}.language-switch button{border:0;border-radius:0;background:white;color:#655a73;font:12px system-ui,sans-serif;padding:7px 12px;min-height:32px;cursor:pointer}.language-switch button[aria-pressed=true]{background:#6540a4;color:white}.language-switch button:focus-visible{outline:2px solid #9364ca;outline-offset:-3px}html[lang=en] .method strong{font-size:13px}html[lang=en] .same{max-width:230px}html[lang=en] .svg-small{font-size:10px}html[lang=en] .scene-label{font-size:13px}html[lang=en] .svg-formula{font-size:13px}html[lang=en] .selected-label{font-size:10px}@media(max-width:620px){.language-bar{padding:12px 12px 0;align-items:flex-start}.course-back{font-size:11px;max-width:65%}.language-switch button{padding:7px 9px}html[lang=en] .method strong{font-size:11px}html[lang=en] .method small{font-size:10px}}
+ .course-top{display:flex;align-items:center;justify-content:space-between;gap:16px}.course-top #toptitle{flex:1}.course-top .language-switch{margin-bottom:10px}.course-top h1{margin-top:0}@media(max-width:600px){.course-top{align-items:flex-start}.course-top h1{font-size:25px}.course-top .language-switch{margin-top:4px}}</style></head><body><table summary="Page layout" id="tlayout"><tr valign="top"><td id="layout-menu"><nav aria-label="Main navigation">
+<div class="menu-category" data-zh="欢迎" data-en="Welcome">欢迎</div>
+<div class="menu-item"><a href="../index.html" data-zh="主页" data-en="Home">主页</a></div>
+<div class="menu-item"><a href="../index.html#publications" data-zh="论文" data-en="Publications">论文</a></div>
+<div class="menu-item"><a href="../index.html#services" data-zh="学术服务" data-en="Professional Services">学术服务</a></div>
+<div class="menu-item"><a href="./" class="current" aria-current="page" data-zh="课程" data-en="Courses">课程</a></div>
+<div class="menu-item"><a href="https://scholar.google.com/citations?user=XRZMwv4AAAAJ&amp;hl=en&amp;authuser=1">Google Scholar</a></div>
+</nav></td><td id="layout-content"><main>
+<div class="course-top"><div id="toptitle"><h1 data-zh="课程" data-en="Courses">课程</h1></div><div class="language-switch" role="group" aria-label="Language / 语言"><button type="button" data-lang="zh" lang="zh-CN">中文</button><button type="button" data-lang="en" lang="en">English</button></div></div>
+<p class="intro" data-zh="Han Tian · 交互式教学材料" data-en="Interactive teaching materials by Han Tian.">Han Tian · 交互式教学材料</p>
+<section aria-labelledby="course-title">
+<h2 id="course-title" data-zh="智能计算软件优化" data-en="Software Optimization for Intelligent Computing">智能计算软件优化</h2>
+<p class="course-subtitle" data-zh="第五章 · GPU 架构与计算优化" data-en="Chapter 5 · GPU Architecture and Computational Optimization">第五章 · GPU 架构与计算优化</p>
+<div class="resource-list">
+<article class="resource" aria-labelledby="matmul-title"><div class="resource-heading"><span class="resource-number">01</span><div><p class="resource-type" data-zh="交互演示 · 矩阵乘法" data-en="Interactive demo · Matrix multiplication">交互演示 · 矩阵乘法</p><h3 id="matmul-title"><a href="demos/matmul.html" data-zh="GPU 矩阵乘法：从朴素计算到分块复用" data-en="GPU Matrix Multiplication: From Naive Computation to Tile Reuse">GPU 矩阵乘法：从朴素计算到分块复用</a></h3></div></div>
+<p data-zh="对比朴素版、寄存器分块、共享内存＋寄存器分块，逐步观察矩阵访问、数据复用和输出形成的过程。" data-en="Compare naive multiplication, register tiling, and shared-memory plus register tiling. Follow matrix accesses, data reuse, and output accumulation step by step.">对比朴素版、寄存器分块、共享内存＋寄存器分块，逐步观察矩阵访问、数据复用和输出形成的过程。</p>
+<ul class="topics"><li data-zh="HBM 与片上存储" data-en="HBM and on-chip storage">HBM 与片上存储</li><li data-zh="分块与复用" data-en="Tiling and reuse">分块与复用</li><li data-zh="Aᵀ 过程视图" data-en="Aᵀ execution view">Aᵀ 过程视图</li></ul>
+<div class="resource-actions"><a class="open-demo" href="demos/matmul.html" data-zh="打开演示 →" data-en="Open demo →">打开演示 →</a></div></article>
+<article class="resource" aria-labelledby="attention-title"><div class="resource-heading"><span class="resource-number">02</span><div><p class="resource-type" data-zh="交互演示 · Attention" data-en="Interactive demo · Attention">交互演示 · Attention</p><h3 id="attention-title"><a href="demos/flashattention.html" data-zh="FlashAttention 与 FlashAttention-2：矩阵子块搬运" data-en="FlashAttention and FlashAttention-2: Matrix Tile Transfers">FlashAttention 与 FlashAttention-2：矩阵子块搬运</a></h3></div></div>
+<p data-zh="在完整 Q、Kᵀ、V 矩阵上选中实际子块，跟随元素从 HBM 进入 GPU 片上区域，观察局部计算、在线 Softmax 与 O 的逐块写回。" data-en="Select actual tiles within the full Q, Kᵀ, and V matrices. Follow their elements from HBM to on-chip GPU storage, through local computation and online Softmax, and back to the matching output tiles in O.">在完整 Q、Kᵀ、V 矩阵上选中实际子块，跟随元素从 HBM 进入 GPU 片上区域，观察局部计算、在线 Softmax 与 O 的逐块写回。</p>
+<ul class="topics"><li data-zh="标准 Attention 对照" data-en="Standard Attention baseline">标准 Attention 对照</li><li data-zh="在线 Softmax" data-en="Online Softmax">在线 Softmax</li><li data-zh="FA1 / FA2 分工" data-en="FA1 / FA2 work partitioning">FA1 / FA2 分工</li></ul>
+<div class="resource-actions"><a class="open-demo" href="demos/flashattention.html" data-zh="打开演示 →" data-en="Open demo →">打开演示 →</a></div></article>
+</div></section></main>
+<div id="footer"><div id="footer-text"><a href="../index.html" data-zh="Han Tian · 主页" data-en="Han Tian · Home">Han Tian · 主页</a></div></div></td></tr></table>
+<script>
+const CourseI18n=(()=>{
+ const key='courses-language';let saved='';try{saved=localStorage.getItem(key)}catch{}
+ const requested=new URLSearchParams(location.search).get('lang');
+ const lang=['zh','en'].includes(requested)?requested:(saved==='en'?'en':'zh');
+ document.documentElement.lang=lang==='en'?'en':'zh-CN';
+ try{localStorage.setItem(key,lang)}catch{}
+ return {lang,key};
+})();
+
+(()=>{
+ const $=id=>document.getElementById(id),api=window.MatmulLab||window.BlockFlow,storageKey='course-state:'+location.pathname;
+ let snapshot;try{snapshot=JSON.parse(sessionStorage.getItem(storageKey));sessionStorage.removeItem(storageKey)}catch{}
+ if(snapshot&&api){
+  if(window.MatmulLab)api.setConfig(snapshot.config);
+  else {api.pause();$('blocks').value=String(8/snapshot.config.br);$('blocks').dispatchEvent(new Event('change'));api.setMode(snapshot.config.mode)}
+  if(snapshot.speed){$('speed').value=snapshot.speed;$('speed').dispatchEvent(new Event('change'))}
+  for(const id of ['heat','show-values'])if($(id)&&id in snapshot){$(id).checked=snapshot[id];$(id).dispatchEvent(new Event('change'))}
+  api.seek(snapshot.position);
+  if(window.BlockFlow&&snapshot.svgTime!=null)$('canvas').querySelector('svg').setCurrentTime(snapshot.svgTime);
+  if(snapshot.playing&&$('play').getAttribute('aria-pressed')!=='true')$('play').click();
+  document.querySelectorAll('details').forEach((el,i)=>el.open=!!snapshot.details?.[i]);
+  requestAnimationFrame(()=>scrollTo(snapshot.scrollX||0,snapshot.scrollY||0));
+ }
+ document.querySelectorAll('[data-zh]').forEach(el=>el.textContent=el.dataset[CourseI18n.lang]);
+ document.querySelectorAll('a.course-back,a.open-demo,.resource h3 a').forEach(el=>{const u=new URL(el.href);u.searchParams.set('lang',CourseI18n.lang);el.href=u.href});
+ document.querySelectorAll('[data-lang]').forEach(button=>{
+  button.setAttribute('aria-pressed',String(button.dataset.lang===CourseI18n.lang));
+  button.addEventListener('click',()=>{
+   if(button.dataset.lang===CourseI18n.lang)return;
+   if(api){const state={config:api.config,position:api.position,speed:$('speed').value,playing:$('play').getAttribute('aria-pressed')==='true',svgTime:window.BlockFlow?$('canvas').querySelector('svg').getCurrentTime():null,details:[...document.querySelectorAll('details')].map(el=>el.open),scrollX,scrollY};for(const id of ['heat','show-values'])if($(id))state[id]=$(id).checked;try{sessionStorage.setItem(storageKey,JSON.stringify(state))}catch{}}
+   try{localStorage.setItem(CourseI18n.key,button.dataset.lang)}catch{}
+   const url=new URL(location.href);url.searchParams.set('lang',button.dataset.lang);location.replace(url);
+  });
+ });
+})();
+</script></body></html>
