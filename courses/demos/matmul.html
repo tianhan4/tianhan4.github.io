@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>矩阵乘法：从程序到数据流</title>
+<style>
+:root{color-scheme:light;--bg:#f5f4f8;--surface:#fff;--ink:#242336;--muted:#6e6b7f;--line:#e3e1ea;--purple:#6540a4;--purple-soft:#eee8f8;--a:#287bb3;--a-soft:#e5f2fc;--b:#128778;--b-soft:#e2f5ee;--c:#93632a;--c-soft:#fff1d9;--dark:#242237;--success:#17725d;--shadow:0 7px 24px #28203f06;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}button,input,select{font:inherit}button,select{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #8c6bd7;outline-offset:3px}button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px 13px;min-height:38px}button:hover:not(:disabled){background:var(--purple-soft)}button:disabled{opacity:.4;cursor:default}button.primary{background:var(--purple);color:white;border-color:var(--purple)}button.primary:hover:not(:disabled){background:#52308e}a{color:var(--purple)}.shell{max-width:1520px;margin:auto;padding:26px 32px 34px}.eyebrow{color:var(--purple);letter-spacing:.12em;font-size:11px;font-weight:650;margin-bottom:5px}.heading{display:flex;justify-content:space-between;align-items:center;gap:20px}h1{font-size:29px;letter-spacing:-.035em;margin:0;font-weight:650}h2{font-size:16px;margin:0;font-weight:650}h3{font-size:13px;margin:0;font-weight:650}p{margin:0}.subhead{color:var(--muted);margin-top:6px}.equation{font-family:Georgia,serif;font-size:25px;white-space:nowrap}.config{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:19px 0 15px}.config label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}select{border:1px solid var(--line);border-radius:7px;padding:6px 25px 6px 9px;color:var(--ink);background:var(--surface);min-height:34px}.config .format{margin-left:auto}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:15px}.method{text-align:left;padding:12px 16px;border-radius:10px;background:#faf9fc;display:flex;align-items:center;gap:13px}.method .num{font:500 22px Georgia,serif;color:var(--muted)}.method strong{display:block;font-size:14px}.method small{display:block;font-size:12px;color:var(--muted);margin-top:1px}.method[aria-selected=true]{background:var(--purple-soft);border-color:#bba5df}.method[aria-selected=true] .num{color:var(--purple)}.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 15px;background:var(--surface);border:1px solid var(--line);border-radius:12px 12px 0 0}.toolbar .speed{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}.timeline{display:flex;align-items:center;gap:12px;padding:7px 16px 12px;background:var(--surface);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;margin-bottom:16px}.timeline input{flex:1;min-width:80px;accent-color:var(--purple)}.timeline output{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:99px;text-align:right}.timeline label{font-size:12px;color:var(--muted)}.workspace{display:grid;grid-template-columns:minmax(290px,.9fr) minmax(610px,2fr);gap:16px;align-items:start}.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow);overflow:hidden}.panel-head{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line);gap:10px}.panel-head span{font-size:11px;color:var(--muted)}.code{padding:10px 0 12px;background:var(--dark);color:#d5d1e8;overflow:hidden;font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;line-height:1.7}.code-line{display:flex;min-height:29px;align-items:baseline;border-left:3px solid transparent;padding:3px 10px 3px 0}.code-line .ln{flex:0 0 33px;text-align:right;padding-right:10px;color:#858198;user-select:none}.code-line .src{white-space:pre-wrap;overflow-wrap:anywhere}.code-line.active{background:#594280;color:#fff;border-color:#c1a2f3}.code-line.active .ln{color:#e1cbff}.code-line.comment{color:#aaa4c0}.context{padding:11px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line)}.pill{font-size:11px;border-radius:4px;background:var(--bg);padding:3px 7px;font-variant-numeric:tabular-nums}.explain{padding:15px 16px;min-height:118px}.explain .phase{color:var(--purple);font-size:12px;font-weight:650;margin-bottom:5px}.explain .sentence{font-size:14px;line-height:1.65}.explain .delta{font-size:12px;color:var(--muted);margin-top:7px}.scope{font-size:12px;color:var(--muted);padding:0 16px 15px}.memory{padding:14px 17px 16px}.layer-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}.layer-heading .name{font-size:12px;font-weight:650;letter-spacing:.035em}.layer-heading .hint{font-size:11px;color:var(--muted)}.matrix-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.matrix-title{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;gap:4px}.matrix-title strong{font-size:13px}.matrix-title span{font-size:10px;color:var(--muted)}.matrix-grid{display:grid;grid-template-columns:18px repeat(var(--cols),minmax(0,1fr));gap:2px}.axis{display:flex;justify-content:center;align-items:center;font:10px ui-monospace,monospace;color:var(--muted);height:15px}.axis.side{height:auto}.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f0eff4;border-radius:2px;font-size:11px;font-variant-numeric:tabular-nums;position:relative;color:#6b677e;min-width:0;transition:background .18s,box-shadow .18s}.cell.in-block{box-shadow:inset 0 0 0 1px #c2b4dc}.cell.read-a{background:var(--a);color:#fff}.cell.read-b{background:var(--b);color:#fff}.cell.done{background:var(--b-soft);color:var(--success)}.cell.target{background:var(--c-soft);box-shadow:inset 0 0 0 1px #d6ad74;color:#865720}.cell.written{background:#c9ebdc;box-shadow:inset 0 0 0 2px #40997d;color:#145440}.cell .heat{position:absolute;inset:auto 2px 1px;height:2px;background:currentColor;opacity:.55;max-width:calc(100% - 4px)}.matrix-foot{font-size:11px;margin:5px 0 0;color:var(--muted);min-height:17px}.transfer{margin:10px 0;padding:7px 10px;background:var(--bg);display:flex;justify-content:space-between;gap:8px;border-radius:5px;align-items:center;flex-wrap:wrap}.transfer strong{font-size:12px;color:var(--muted);font-weight:500}.transfer.hot strong{color:var(--purple);font-weight:650}.transfer small{font-size:11px;color:var(--muted)}.shared-layer{padding:10px 12px;background:#f7f6fb;border:1px dashed #d8d0e4;border-radius:8px}.shared-layer.inactive{padding:10px 12px}.shared-grids{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:480px;margin:auto}.shared-grids .matrix-grid{grid-template-columns:18px repeat(var(--cols),minmax(0,1fr))}.shared-grids .cell{aspect-ratio:auto;height:24px}.shared-empty{color:var(--muted);font-size:12px;padding:4px 0}.shared-foot{font-size:11px;color:var(--muted);text-align:center;margin-top:6px}.register-layer{margin-top:10px;border:1px solid var(--line);padding:10px 12px;border-radius:8px}.reg-flow{display:grid;grid-template-columns:minmax(75px,1fr) 20px minmax(75px,1fr) 32px minmax(90px,1.15fr);align-items:center;gap:6px}.operand-grid{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:3px;max-width:126px;margin:auto}.operand-grid .cell{aspect-ratio:auto;min-height:29px;font-size:13px;color:var(--ink)}.operand-grid.a .cell{background:var(--a-soft)}.operand-grid.b .cell{background:var(--b-soft)}.operand-grid.c .cell{background:var(--c-soft)}.operand-grid.focus .cell{box-shadow:inset 0 0 0 2px #ab7cdc}.reg-label{font-size:11px;color:var(--muted);text-align:center;margin-bottom:5px}.operator{font-family:Georgia,serif;font-size:20px;color:var(--muted);text-align:center}.math-detail{margin-top:9px;border-top:1px solid var(--line);padding-top:7px;font-family:ui-monospace,monospace;font-size:12px;text-align:center;min-height:26px}.compute-unit{margin-top:9px;display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:6px;background:var(--bg);font-size:12px;color:var(--muted)}.compute-unit.active{background:var(--c-soft);color:#895912}.compute-unit .dot{height:8px;width:8px;flex-shrink:0;background:currentColor;border-radius:50%}.compute-unit strong{font-weight:650}.live-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:12px 16px;border-top:1px solid var(--line);background:#fbfafd}.metric .label{color:var(--muted);font-size:11px;display:block}.metric .value{font-variant-numeric:tabular-nums;font-size:20px;font-weight:600}.metric .unit{font-size:11px;color:var(--muted);margin-left:3px}.legend{display:flex;flex-wrap:wrap;gap:13px;align-items:center;font-size:11px;color:var(--muted);margin-top:10px}.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}.comparison{margin-top:20px}.comparison-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}.comparison-heading span{font-size:12px;color:var(--muted)}.compare-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.compare-card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 16px}.compare-card.selected{border-color:#bca6df}.compare-card .top{display:flex;justify-content:space-between;gap:8px;align-items:center}.compare-card .ratio{font-size:11px;color:var(--purple)}.compare-card .read-count{font-size:25px;font-variant-numeric:tabular-nums;margin-top:5px}.compare-card .read-count small{font-size:11px;color:var(--muted);margin-left:5px}.bar-track{height:6px;background:var(--purple-soft);margin:7px 0 10px;border-radius:3px;overflow:hidden}.bar{height:100%;background:#9875c5;transition:width .3s}.compare-card dl{display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:12px;margin:0}.compare-card dt{color:var(--muted)}.compare-card dd{margin:0;font-variant-numeric:tabular-nums}.insight{margin-top:12px;padding:12px 16px;background:var(--purple-soft);border-radius:8px;display:flex;gap:10px;font-size:13px}.insight strong{white-space:nowrap;color:var(--purple)}details{margin-top:15px;color:var(--muted);font-size:12px}summary{cursor:pointer;color:var(--ink);padding:5px 0}details p{margin:7px 0}details ul{margin:7px 0;padding-left:20px}details li{margin:4px 0}.finished{color:var(--success)!important}.footer{font-size:11px;color:var(--muted);margin-top:16px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.heat-toggle{display:flex;gap:5px;align-items:center;font-size:11px;color:var(--muted)}.heat-toggle input{accent-color:var(--purple)}.no-values .cell{font-size:0}.no-values .operand-grid .cell{font-size:13px}
+.onchip-grid{display:grid;grid-template-columns:1fr 1.12fr;gap:10px;align-items:stretch}.onchip-grid .register-layer{margin-top:0}.matrix-row .matrix-grid{max-width:216px;margin:auto}.onchip-grid .reg-flow{margin-top:15px}.onchip-grid .layer-heading .hint{display:block;width:100%}.onchip-grid .shared-grids{gap:10px}.onchip-grid .shared-grids .matrix-grid{grid-template-columns:12px repeat(var(--cols),minmax(0,1fr));gap:1px}.onchip-grid .reg-flow .operand-grid{max-width:100px}.shell{padding-top:20px}.config{margin-top:14px;margin-bottom:12px}.tabs{margin-bottom:12px}.timeline{margin-bottom:12px}.onchip-grid .shared-empty{padding-top:15px}
+@media(max-width:1150px) and (min-width:901px){.onchip-grid{grid-template-columns:1fr}.onchip-grid .reg-flow{margin-top:3px}.onchip-grid .layer-heading .hint{display:inline;width:auto}}
+@media(max-width:620px){.onchip-grid{grid-template-columns:1fr}.onchip-grid .reg-flow{margin-top:3px}.onchip-grid .layer-heading .hint{display:inline;width:auto}}
+@media(min-width:1450px){.cell{font-size:13px}.code{font-size:13px}.code-line{min-height:31px}}
+@media(max-width:1080px){.shell{padding:20px}.workspace{grid-template-columns:290px minmax(0,1fr)}.matrix-row{gap:8px}.matrix-grid{gap:1px;grid-template-columns:12px repeat(var(--cols),minmax(0,1fr))}.cell{font-size:10px}.matrix-title span{display:none}.memory{padding:12px}.code{font-size:11px}.live-metrics{gap:5px;padding:11px}.metric .value{font-size:18px}}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.program-body{display:grid;grid-template-columns:1.05fr 1fr}.program-body .code{font-size:12px}.cell{font-size:12px}.matrix-title span{display:inline}.config .format{margin-left:0}.heading .equation{font-size:21px}.method{padding:10px;gap:8px}.method small{font-size:11px}}
+@media(max-width:620px){.shell{padding:14px 12px}.heading{display:block}h1{font-size:24px}.heading .equation{margin-top:9px}.tabs{gap:5px}.method{display:block;padding:8px}.method .num{display:none}.method strong{font-size:12px}.method small{font-size:10px}.toolbar{gap:6px;padding:10px}.toolbar button{padding:7px 10px;font-size:12px}.toolbar .speed{margin-left:0}.program-body{display:block}.matrix-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.matrix-card:last-child{grid-column:1/-1;max-width:260px;width:100%;justify-self:center}.matrix-title span{display:none}.live-metrics{grid-template-columns:repeat(2,1fr);gap:10px}.compare-grid{grid-template-columns:1fr}.comparison-heading{display:block}.reg-flow{grid-template-columns:1fr 15px 1fr 24px 1.1fr;gap:3px}.shared-grids{gap:10px}.config{gap:8px}.config label{font-size:11px}.insight{display:block}.insight strong{display:block;margin-bottom:4px}.cell{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body><nav aria-label="Course navigation" style="max-width:1440px;margin:0 auto;padding:14px 24px 0;font:13px -apple-system,BlinkMacSystemFont,sans-serif"><a href="../" style="color:#527bbd;text-decoration:none">← Courses · 智能计算软件优化</a></nav>
+<main class="shell" id="matmul-lab">
+  <div class="eyebrow">GPU · 矩阵乘法实验室</div>
+  <header class="heading"><div><h1>同一个乘法，三种数据路径</h1><p class="subhead">跟着一行代码，看数据从全局存储走到片上，再变成输出。</p></div><div class="equation" id="equation"></div></header>
+  <div class="config" aria-label="矩阵与分块设置">
+    <label>运算<select id="operation"><option value="atb">C = AᵀB（课件）</option><option value="ab">C = AB</option></select></label>
+    <label>矩阵边长 N<select id="size"><option>4</option><option selected>8</option></select></label>
+    <label>Block 边长 L<select id="block"><option>2</option><option selected>4</option></select></label>
+    <label>线程边长 V<select id="thread"><option>1</option><option selected>2</option></select></label>
+    <label>k 分块 S<select id="slice"><option>1</option><option selected>2</option><option>4</option></select></label>
+    <label class="format"><input type="checkbox" id="show-values" checked> 显示数值</label>
+  </div>
+  <div class="tabs" role="tablist" aria-label="矩阵乘法实现">
+    <button type="button" class="method" id="tab-naive" role="tab" aria-selected="true" aria-controls="demo" data-method="naive"><span class="num">01</span><span><strong>朴素矩阵乘法</strong><small>一个线程，累加一个输出</small></span></button>
+    <button type="button" class="method" id="tab-register" role="tab" aria-selected="false" aria-controls="demo" data-method="register"><span class="num">02</span><span><strong>寄存器分块</strong><small>一个线程，复用一组操作数</small></span></button>
+    <button type="button" class="method" id="tab-shared" role="tab" aria-selected="false" aria-controls="demo" data-method="shared"><span class="num">03</span><span><strong>共享内存＋寄存器分块</strong><small>整个 Block，复用一片数据</small></span></button>
+  </div>
+  <section id="demo" role="tabpanel" aria-labelledby="tab-naive">
+    <div class="toolbar"><button id="restart" title="回到开始">↺ 重置</button><button id="previous">上一步</button><button id="play" class="primary">▶ 播放</button><button id="next">下一步 →</button><button id="next-output">下一输出块</button><button id="finish">查看完整结果</button><label class="speed">播放速度<select id="speed"><option value="1400">慢速</option><option value="650" selected>标准</option><option value="170">快速</option><option value="80">快进（每次 16 步）</option></select></label></div>
+    <div class="timeline"><label for="position">执行进度</label><input id="position" type="range" min="0" max="100" value="0"><output id="step-count" for="position"></output></div>
+    <div class="workspace">
+      <section class="panel program"><div class="panel-head"><h2>程序正在执行什么</h2><span>教学伪代码</span></div><div class="program-body"><div class="code" id="code"></div><div><div class="context" id="context"></div><div class="explain" aria-live="polite" aria-atomic="true"><div id="phase" class="phase"></div><div id="sentence" class="sentence"></div><div id="delta" class="delta"></div></div><p class="scope" id="scope"></p></div></div></section>
+      <section class="panel hardware"><div class="panel-head"><h2>数据在哪里，计算在哪里</h2><label class="heat-toggle"><input type="checkbox" id="heat">显示重复读取热度</label></div><div class="memory">
+        <div class="layer-heading"><span class="name">① HBM / 全局数组 · 逻辑视图</span><span class="hint" id="input-legend">蓝：读 Aᵀ　绿：读 B　橙：当前输出</span></div>
+        <div class="matrix-row" id="hbm"></div>
+        <div class="transfer" id="transfer"><strong id="route"></strong><small>真实路径含 L2/L1；此处不模拟缓存命中</small></div>
+        <div class="onchip-grid"><div class="shared-layer" id="shared-layer"><div class="layer-heading"><span class="name">② 共享内存 · Block 内显式复用</span><span id="shared-size" class="hint"></span></div><div id="shared-content"></div></div>
+        <div class="register-layer"><div class="layer-heading"><span class="name">③ 寄存器 · 当前线程私有</span><span class="hint" id="reg-size"></span></div><div class="reg-flow"><div><div class="reg-label" id="a-label">a</div><div id="reg-a"></div></div><span class="operator">×</span><div><div class="reg-label" id="b-label">b</div><div id="reg-b"></div></div><span class="operator">+=</span><div><div class="reg-label" id="c-label">累加器 c</div><div id="reg-c"></div></div></div><div class="math-detail" id="math"></div></div>
+        </div><div class="compute-unit" id="compute"><span class="dot"></span><strong>CUDA 核 / FMA</strong><span id="compute-text"></span></div>
+        <div class="legend"><span><i style="background:var(--a)"></i><span id="a-legend">Aᵀ 操作数</span></span><span><i style="background:var(--b)"></i>B 操作数</span><span><i style="background:#d6ad74"></i>当前 c 累加器</span><span><i style="background:#93cdb6"></i>已写回 C</span><span>悬停矩阵格可查看坐标与数值</span></div>
+      </div><div class="live-metrics" id="live-metrics"></div></section>
+    </div>
+  </section>
+  <section class="comparison"><div class="comparison-heading"><h2>完整计算的效果对比</h2><span id="same-work"></span></div><div class="compare-grid" id="comparison"></div><div class="insight"><strong id="insight-title"></strong><span id="insight-text"></span></div></section>
+  <details><summary>计数口径与真实 GPU 的区别</summary><ul><li>C = AᵀB 模式直接展示 Aᵀ：画面坐标 Aᵀ[i,k] 对应原数组 A[k,i]，共享输入片 sAT 也按这一转置视图显示。这里只改变呈现与伪代码记法，不执行额外转置搬运，也不表示物理内存布局发生变化。</li><li>所有版本计算同一组矩阵，并实际在本页计算出 C；一次 FMA 计为 2 FLOPs。当前动画累计数由执行事件逐项累加，完整对比由对应循环结构推导。</li><li>“全局输入读取”按线程请求的标量元素计数，不是内存事务数。仅在忽略 L1/L2 命中、访存合并和其他开销的模型中，将其乘以 4 字节近似为 FP32 的 HBM 输入流量；真实 HBM 流量需要测量。</li><li>三种版本都以寄存器保存累加器。第二种进一步让每线程计算 V×V 个输出；第三种还让 Block 协作加载、复用共享内存中的输入块。共享内存与硬件自动管理的缓存不是同一概念。</li><li>画面按 Block、线程依次展开，便于观察；真实 GPU 会并行或交错执行。一次动画步可能代表多个线程的协作加载，或 V² 次标量 FMA，步数与播放速度不代表运行时间。</li><li>寄存器数量只计操作数与累加器的数据槽，不含索引等临时值，也不是编译器实际分配量。教学模型省略寄存器溢出、访存事务、bank conflict、流水线重叠、Tensor Core 和边界处理；N、L、V、S 采用整除设置。共享内存加载省略中间搬运寄存器，不能据此推断使用了异步拷贝。</li><li>增大 V 会增加每线程寄存器需求；增大 L 或 S 会增加共享内存占用。这些资源可能限制 Occupancy，因此读取减少不等于同倍数加速。</li></ul><p>参考：<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#shared-memory-in-matrix-multiplication-c-ab" target="_blank" rel="noreferrer">NVIDIA CUDA Best Practices · 矩阵乘法</a> · <a href="https://developer.nvidia.com/blog/cutlass-linear-algebra-cuda/" target="_blank" rel="noreferrer">NVIDIA CUTLASS · 分层分块</a></p></details>
+  <div class="footer"><span>FP32 教学模型 · 可离线运行 · 运算结果与读写计数可复核</span><span>键盘：← 上一步　→ 下一步　空格 播放 / 暂停</span></div>
+</main>
+<script>
+'use strict';
+/* The event trace is the single source for code position, cell highlights and counters. */
+const MatmulEngine = (() => {
+  const modes=['naive','register','shared'];
+  function arrays(n){return {A:Array.from({length:n*n},(_,q)=>1+(Math.floor(q/n)*2+q%n)%5),B:Array.from({length:n*n},(_,q)=>1+(Math.floor(q/n)+2*(q%n))%4)};}
+  const indexA=(cfg,i,k)=>cfg.op==='atb'?k*cfg.n+i:i*cfg.n+k;
+  function reference(cfg,A,B){const out=Array(cfg.n*cfg.n).fill(0);for(let i=0;i<cfg.n;i++)for(let j=0;j<cfg.n;j++)for(let k=0;k<cfg.n;k++)out[i*cfg.n+j]+=A[indexA(cfg,i,k)]*B[k*cfg.n+j];return out;}
+  function build(cfg){
+    const {n,L,V,S,mode}=cfg;const v=mode==='naive'?1:V;const es=[];
+    let ctx={br:0,bc:0,tr:0,tc:0,k:0,ko:0};
+    const emit=(kind,line,extra={})=>es.push({...ctx,kind,line,...extra});
+    emit('ready',-1);
+    for(let br=0;br<n;br+=L)for(let bc=0;bc<n;bc+=L){
+      ctx={br,bc,tr:br,tc:bc,k:0,ko:0};emit('block',0);
+      if(mode==='shared'){
+        emit('initblock',2);
+        for(let ko=0;ko<n;ko+=S){
+          ctx={...ctx,ko,k:ko,tr:br,tc:bc};emit('stage',3);emit('tileA',4);emit('tileB',5);emit('barrierLoad',6);
+          for(let ki=0;ki<S;ki++)for(let tr=br;tr<br+L;tr+=v)for(let tc=bc;tc<bc+L;tc+=v){ctx={br,bc,tr,tc,k:ko+ki,ko};emit('sharedA',8);emit('sharedB',9);emit('fma',10);}
+          emit('barrierUse',11);
+        }
+        emit('storeblock',12);
+      }else{
+        for(let tr=br;tr<br+L;tr+=v)for(let tc=bc;tc<bc+L;tc+=v){
+          ctx={br,bc,tr,tc,k:0,ko:0};emit('init',2);
+          for(let k=0;k<n;k++){ctx.k=k;emit('globalA',4);emit('globalB',5);emit('fma',6);}
+          emit('store',7);
+        }
+      }
+    }
+    emit('done',-1);return es;
+  }
+  function fresh(cfg){const {A,B}=arrays(cfg.n);return {A,B,C:Array(cfg.n*cfg.n).fill(null),acc:Array(cfg.n*cfg.n).fill(0),a:[],b:[],sA:[],sB:[],heatA:Array(cfg.n*cfg.n).fill(0),heatB:Array(cfg.n*cfg.n).fill(0),g:0,sh:0,w:0,fma:0,sync:0,previous:0,expected:reference(cfg,A,B)};}
+  function aTileIndex(cfg,e,i,k){return cfg.op==='atb'?(k-e.ko)*cfg.L+i-e.br:(i-e.br)*cfg.S+k-e.ko;}
+  function apply(s,e,cfg){
+    const {n,L,S,mode,V}=cfg,v=mode==='naive'?1:V;const {br,bc,tr,tc,k,ko,kind}=e;
+    if(kind==='block'){s.a=[];s.b=[];s.sA=[];s.sB=[];}
+    if(kind==='init'||kind==='initblock'){s.a=[];s.b=[];const r=kind==='init'?tr:br,c=kind==='init'?tc:bc,d=kind==='init'?v:L;for(let y=r;y<r+d;y++)for(let x=c;x<c+d;x++)s.acc[y*n+x]=0;}
+    if(kind==='stage'){s.sA=Array(L*S).fill(null);s.sB=Array(L*S).fill(null);s.a=[];s.b=[];}
+    if(kind==='tileA'){for(let i=br;i<br+L;i++)for(let kk=ko;kk<ko+S;kk++){const q=indexA(cfg,i,kk);s.sA[aTileIndex(cfg,e,i,kk)]=s.A[q];s.heatA[q]++;s.g++;}}
+    if(kind==='tileB'){for(let kk=ko;kk<ko+S;kk++)for(let j=bc;j<bc+L;j++){const q=kk*n+j;s.sB[(kk-ko)*L+j-bc]=s.B[q];s.heatB[q]++;s.g++;}}
+    if(kind==='globalA'||kind==='sharedA'){
+      s.a=[];s.b=[];
+      for(let y=0;y<v;y++){const q=indexA(cfg,tr+y,k);if(kind==='globalA'){s.a.push(s.A[q]);s.g++;s.heatA[q]++;}else{s.a.push(s.sA[aTileIndex(cfg,e,tr+y,k)]);s.sh++;}}
+    }
+    if(kind==='globalB'||kind==='sharedB'){
+      s.b=[];for(let x=0;x<v;x++){const q=k*n+tc+x;if(kind==='globalB'){s.b.push(s.B[q]);s.g++;s.heatB[q]++;}else{s.b.push(s.sB[(k-ko)*L+tc-bc+x]);s.sh++;}}
+    }
+    if(kind==='fma'){s.previous=s.acc[tr*n+tc];for(let y=0;y<v;y++)for(let x=0;x<v;x++){s.acc[(tr+y)*n+tc+x]+=s.a[y]*s.b[x];s.fma++;}}
+    if(kind==='barrierLoad'||kind==='barrierUse'){s.sync++;}
+    if(kind==='store'||kind==='storeblock'){const r=kind==='store'?tr:br,c=kind==='store'?tc:bc,d=kind==='store'?v:L;for(let y=r;y<r+d;y++)for(let x=c;x<c+d;x++){s.C[y*n+x]=s.acc[y*n+x];s.w++;}}
+    return s;
+  }
+  function totals(cfg,mode=cfg.mode){const {n,L,V,S}=cfg;const g=2*n**3/(mode==='naive'?1:mode==='register'?V:L),v=mode==='naive'?1:V;return {g,w:n*n,fma:n**3,sh:mode==='shared'?2*n**3/V:0,bytes:4*(g+n*n),ai:2*n**3/(4*(g+n*n)),reg:v*v+2*v,shared:mode==='shared'?2*L*S*4:0,sync:mode==='shared'?2*(n/L)**2*(n/S):0};}
+  return {modes,arrays,indexA,reference,build,fresh,apply,totals,aTileIndex};
+})();
+window.MatmulEngine=MatmulEngine;
+(() => {
+  const root=document.getElementById('matmul-lab'),$=id=>document.getElementById(id),fmt=x=>Number(x).toLocaleString('en-US');
+  let cfg={n:8,L:4,V:2,S:2,op:'atb',mode:'naive'},events=[],state,pos=0,timer=null,checkpoints=new Map();
+  const names={naive:'朴素版',register:'寄存器分块',shared:'共享内存＋寄存器分块'};
+  function clone(s){return JSON.parse(JSON.stringify(s));}
+  function lines(){const at=cfg.op==='atb';if(cfg.mode==='shared')return [
+    '定位 Block 输出块 C[br:br+L, bc:bc+L]',
+    '每线程负责 rows × cols（V × V）',
+    'c[V, V] = 0  // 各线程的私有寄存器',
+    'for ko = 0 .. N-1 step S:',
+    at?'  协作加载 sAT = Aᵀ[br:br+L, ko:ko+S]':'  协作加载 sA = A[br:br+L, ko:ko+S]',
+    '  协作加载 sB = B[ko:ko+S, bc:bc+L]',
+    '  __syncthreads()  // 加载完成',
+    '  for ki = 0 .. S-1:',
+    at?'    a = sAT[local_rows, ki]':'    a = sA[local_rows, ki]',
+    '    b = sB[ki, local_cols]',
+    '    c += outer(a, b)  // V² 次 FMA',
+    '  __syncthreads()  // 消费完成',
+    '各线程写回 C[rows, cols] = c'];
+    if(cfg.mode==='register')return ['定位 Block 输出区域','每线程负责 rows × cols（V × V）','c[V, V] = 0','for k = 0 .. N-1:',at?'  a[V] = Aᵀ[rows, k]':'  a[V] = A[rows, k]','  b[V] = B[k, cols]','  c += outer(a, b)  // V² 次 FMA','C[rows, cols] = c'];
+    return ['定位 Block 输出区域','每线程负责一个 (i, j)','c = 0  // 寄存器累加器','for k = 0 .. N-1:',at?'  a = Aᵀ[i, k]':'  a = A[i, k]','  b = B[k, j]','  c += a * b  // 1 次 FMA','C[i, j] = c'];
+  }
+  const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function reset(){pause();events=MatmulEngine.build(cfg);state=MatmulEngine.fresh(cfg);pos=0;checkpoints=new Map([[0,clone(state)]]);$('code').innerHTML=lines().map((l,i)=>`<div class="code-line" data-line="${i}"><span class="ln">${i+1}</span><span class="src">${esc(l)}</span></div>`).join('');$('position').max=events.length-1;renderComparison();render();}
+  function seek(p){p=Math.max(0,Math.min(events.length-1,Number(p)));if(p<pos){let q=Math.floor(p/80)*80;while(!checkpoints.has(q))q-=80;state=clone(checkpoints.get(q));pos=q;}while(pos<p){pos++;MatmulEngine.apply(state,events[pos],cfg);if(pos%80===0)checkpoints.set(pos,clone(state));}render();if(pos===events.length-1)pause();}
+  function pause(){if(timer!==null)clearTimeout(timer);timer=null;$('play').textContent='▶ 播放';$('play').setAttribute('aria-pressed','false');}
+  function schedule(){timer=setTimeout(()=>{seek(pos+($('speed').value==='80'?16:1));if(pos<events.length-1)schedule();},Number($('speed').value));}
+  function play(){if(timer!==null){pause();return;}if(pos===events.length-1)seek(0);$('play').textContent='Ⅱ 暂停';$('play').setAttribute('aria-pressed','true');schedule();}
+  function cells(rows,cols,values,opts={}){let html=`<div class="matrix-grid" style="--cols:${cols}" role="img" aria-label="${esc(opts.label||'矩阵')}"><span class="axis"></span>`;for(let c=0;c<cols;c++)html+=`<span class="axis">${opts.colBase===undefined?c:opts.colBase+c}</span>`;for(let r=0;r<rows;r++){html+=`<span class="axis side">${opts.rowBase===undefined?r:opts.rowBase+r}</span>`;for(let c=0;c<cols;c++){const q=r*cols+c,val=values[q],cl=opts.classes?opts.classes(q,r,c):'',heat=opts.heat?opts.heat[q]:0,tip=`${opts.symbol||''}[${r+(opts.rowBase||0)},${c+(opts.colBase||0)}] = ${val===null||val===undefined?'尚未写入':val}${opts.heat?'；累计读取 '+heat+' 次':''}`;html+=`<span class="cell ${cl}" title="${esc(tip)}">${val===null||val===undefined?'·':val}${opts.heat&&$('heat').checked&&heat?`<i class="heat" style="width:${Math.min(100,heat/cfg.n*100)}%"></i>`:''}</span>`;}}return html+'</div>';}
+  function operand(vals,rows,cols,kind,focus){return `<div class="operand-grid ${kind}${focus?' focus':''}" style="--cols:${cols}">${Array.from({length:rows*cols},(_,q)=>`<span class="cell">${vals[q]??'·'}</span>`).join('')}</div>`;}
+  function info(e){const {kind,tr,tc,k,ko,br,bc}=e,{n,L,V,S,mode}=cfg,v=mode==='naive'?1:V;const aName=cfg.op==='atb'?'Aᵀ':'A',sharedName=cfg.op==='atb'?'sAT':'sA';const aCoord=`${aName}[${tr}${v>1?'…'+(tr+v-1):''}, ${k}]`;const bCoord=`B[${k}, ${tc}${v>1?'…'+(tc+v-1):''}]`;const blockid=`(${br/L}, ${bc/L})`;
+    const map={
+      ready:['准备执行','点击“下一步”，观察代码行与矩阵格同步变化。','所有输出相同；比较的是数据如何被搬运和复用。','尚无数据搬运'],
+      block:['定位输出区域',`展示 Block ${blockid} 的 ${L}×${L} 输出区域；其中每线程负责 ${v}×${v} 个输出。`,'依次展开仅为教学，真实 Block 可并行或交错执行。','定位线程与输出'],
+      init:['初始化累加器',`当前线程把 ${v*v} 个寄存器累加器置零，准备覆盖整个 k 维。`,'尚未写回 HBM，C 中仍显示空点。','寄存器内初始化'],
+      initblock:['初始化各线程累加器',`Block 内 ${(L/v)**2} 个线程分别持有 ${v}×${v} 个私有累加器。`,'整块输出共有 '+L*L+' 个累加器，分散在各线程中。','寄存器内初始化'],
+      stage:['开始 k 分块',`加载归约范围 k = ${ko}…${ko+S-1}，准备共享内存中的两个输入片。`,'上一片数据已消费完；现在可以复用同一对缓冲区。','准备共享内存缓冲区'],
+      tileA:[`协作加载 ${aName}`,`整个 Block 协作搬运 ${L*S} 个 ${aName} 元素到 ${sharedName}，在图中形成 ${L}×${S} 的输入片。`,`全局输入读取 +${L*S}；每个元素本阶段只加载一次。`,`全局存储 ${aName} → 共享内存 ${sharedName}`],
+      tileB:['协作加载 B',`整个 Block 协作搬运 ${L*S} 个 B 元素到 sB，供多个线程复用。`,`全局输入读取 +${L*S}；两片总共占用 ${2*L*S*4} B。`,'全局存储 → 共享内存 sB'],
+      barrierLoad:['屏障：等加载完成','所有线程完成本阶段的协作加载，之后才能安全读取共享内存。','__syncthreads() 协调 Block 内的线程，不是整个 GPU。','Block 内同步 · 加载完成'],
+      globalA:[`读取 ${aName} 操作数`,`${aCoord} → 当前线程的 a 寄存器。`,`全局输入读取 +${v} 个 FP32 元素（模型 ${v*4} B）。`,`全局存储 ${aName} → 寄存器 a`],
+      globalB:['读取 B 操作数',`${bCoord} → 当前线程的 b 寄存器。`,`全局输入读取 +${v}；现在用 ${2*v} 个输入进行 ${v*v} 次 FMA。`,'全局存储 → 寄存器 b'],
+      sharedA:[`从 ${sharedName} 读取`,`当前线程从 ${sharedName} 的第 ${k-ko} 列取出 ${v} 个 ${aName} 元素，放入自己的 a 寄存器。`,`共享内存读取 +${v}；此步不增加全局输入读取。`,`共享内存 ${sharedName} → 寄存器 a`],
+      sharedB:['从 sB 读取',`当前线程从共享内存取出 ${v} 个 B 元素，放入自己的 b 寄存器。`,`共享内存读取 +${v}；相同共享数据还可被其他线程读取。`,'共享内存 sB → 寄存器 b'],
+      fma:['执行乘加',v===1?`k = ${k}：CUDA 核用 a、b 更新一个寄存器累加器。`:`k = ${k}：a 的 ${v} 个数与 b 的 ${v} 个数组成外积，更新 ${v}×${v} 个累加器。`,`FMA +${v*v}，FLOPs +${2*v*v}；本步无新增存储读取。`,'寄存器操作数 → CUDA 核 → 累加器'],
+      barrierUse:['屏障：等消费完成','所有线程都用完当前共享片后，才能让下一片覆盖这两个缓冲区。','防止某些线程仍在读取时，另一些线程提前覆盖数据。','Block 内同步 · 消费完成'],
+      store:['写回线程输出',`k 维累加完成，把当前线程的 ${v*v} 个结果写回全局数组 C。`,`输出写回 +${v*v}；绿色格子表示结果已经完成。`,'寄存器累加器 → 全局数组 C'],
+      storeblock:['写回 Block 输出',`所有线程将各自的结果写回 C，完成 Block ${blockid} 的 ${L}×${L} 输出块。`,`输出写回 +${L*L}；每个输出只写回一次。`,'各线程累加器 → 全局数组 C'],
+      done:['计算完成',state.C.every((x,i)=>x===state.expected[i])?'全部输出与直接矩阵乘法参考结果一致。':'结果校验失败，请检查执行模型。',`累计 ${fmt(state.fma)} 次 FMA；${fmt(state.g)} 个全局输入元素读取；${fmt(state.w)} 个输出写回。`,'计算完成 · 已校验输出']
+    };return map[kind];
+  }
+  function render(){
+    const e=events[pos],{n,L,S,mode,V}=cfg,v=mode==='naive'?1:V,{br,bc,tr,tc,k,ko,kind}=e;const t=MatmulEngine.totals(cfg),text=info(e);
+    $('equation').textContent=cfg.op==='atb'?'C = AᵀB':'C = AB';$('demo').setAttribute('aria-labelledby','tab-'+mode);
+    root.querySelectorAll('.method').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.method===mode)));
+    root.querySelectorAll('.code-line').forEach(el=>el.classList.toggle('active',Number(el.dataset.line)===e.line));
+    $('context').innerHTML=[`Block (${br/L}, ${bc/L})`,`输出行 ${tr}…${tr+v-1}`,`输出列 ${tc}…${tc+v-1}`,`k = ${k}`,mode==='shared'?`ko = ${ko} · ki = ${k-ko}`:''].filter(Boolean).map(x=>`<span class="pill">${x}</span>`).join('');
+    $('phase').textContent=text[0];$('phase').classList.toggle('finished',kind==='done');$('sentence').textContent=text[1];$('delta').textContent=text[2];$('route').textContent=text[3];$('transfer').classList.toggle('hot',/global|shared[AB]|tile[AB]|store/.test(kind));
+    $('scope').textContent=mode==='shared'?`当前 Block ${(L/v)**2} 个线程；每线程 ${v}×${v} 输出。逐个展示线程如何使用同一份共享数据。`:`当前 Block ${mode==='naive'?L*L:(L/v)**2} 个线程；一个线程完成自己的 k 循环，再展开下一线程。`;
+    const ha=new Set(),hb=new Set(),sa=new Set(),sb=new Set();
+    if(kind==='globalA')for(let y=0;y<v;y++)ha.add(MatmulEngine.indexA(cfg,tr+y,k));
+    if(kind==='globalB')for(let x=0;x<v;x++)hb.add(k*n+tc+x);
+    if(kind==='tileA')for(let i=br;i<br+L;i++)for(let kk=ko;kk<ko+S;kk++)ha.add(MatmulEngine.indexA(cfg,i,kk));
+    if(kind==='tileB')for(let kk=ko;kk<ko+S;kk++)for(let j=bc;j<bc+L;j++)hb.add(kk*n+j);
+    if(kind==='sharedA'||kind==='fma')for(let y=0;y<v;y++)sa.add(MatmulEngine.aTileIndex(cfg,e,tr+y,k));
+    if(kind==='sharedB'||kind==='fma')for(let x=0;x<v;x++)sb.add((k-ko)*L+tc-bc+x);
+    const at=cfg.op==='atb',aName=at?'Aᵀ':'A';
+    const transposeIndex=q=>(q%n)*n+Math.floor(q/n);
+    const aView=at?state.A.map((_,q)=>state.A[transposeIndex(q)]):state.A;
+    const aHeat=at?state.heatA.map((_,q)=>state.heatA[transposeIndex(q)]):state.heatA;
+    const aHighlights=at?new Set([...ha].map(transposeIndex)):ha;
+    $('input-legend').textContent=`蓝：读 ${aName}　绿：读 B　橙：当前输出`;$('a-legend').textContent=`${aName} 操作数`;
+    const hbmCards=[[aName,aView,aHighlights,'read-a',aHeat],['B',state.B,hb,'read-b',state.heatB],['C',state.C,null,'',null]].map(([symbol,values,hi,cl,heat])=>{
+      const classes=(q,r,c)=>{if(symbol!=='C')return hi.has(q)?cl:'';let out=values[q]!==null?'done ':'';if(kind!=='ready'&&kind!=='done'&&r>=br&&r<br+L&&c>=bc&&c<bc+L)out+='in-block ';if(kind!=='done'&&kind!=='ready'&&r>=tr&&r<tr+v&&c>=tc&&c<tc+v)out+='target ';if((kind==='store'&&r>=tr&&r<tr+v&&c>=tc&&c<tc+v)||(kind==='storeblock'&&r>=br&&r<br+L&&c>=bc&&c<bc+L))out+='written ';return out;};
+      return `<div class="matrix-card"><div class="matrix-title"><strong>${symbol} <span>${n} × ${n}</span></strong><span>${symbol==='C'?'输出矩阵':symbol==='Aᵀ'?'转置视图 · 行 i，列 k':'输入矩阵'}</span></div>${cells(n,n,values,{symbol,label:symbol+' 矩阵',classes,heat})}<div class="matrix-foot">${symbol==='C'?`已写回 ${state.w} / ${n*n}`:`累计读出 ${fmt(heat.reduce((a,b)=>a+b,0))} 个元素`}</div></div>`;
+    });$('hbm').innerHTML=hbmCards.join('');
+    $('shared-layer').classList.toggle('inactive',mode!=='shared');$('shared-size').textContent=mode==='shared'?`${2*L*S*4} B / Block`:'未使用';
+    if(mode==='shared'){
+      const ar=L,ac=S,sharedName=at?'sAT':'sA';
+      const sourceIndex=q=>at?(q%S)*L+Math.floor(q/S):q;
+      const sharedView=Array.from({length:L*S},(_,q)=>state.sA[sourceIndex(q)]);
+      $('shared-content').innerHTML=`<div class="shared-grids"><div><div class="matrix-title"><strong>${sharedName} · ${ar}×${ac}</strong></div>${cells(ar,ac,sharedView,{symbol:sharedName,label:sharedName+' 共享输入片',classes:q=>kind==='tileA'?'read-a':sa.has(sourceIndex(q))?'read-a':''})}</div><div><div class="matrix-title"><strong>sB · ${S}×${L}</strong></div>${cells(S,L,state.sB,{symbol:'sB',classes:q=>kind==='tileB'?'read-b':sb.has(q)?'read-b':''})}</div></div><div class="shared-foot">k = ${ko}…${ko+S-1} · ${(L/v)**2} 个线程协作加载并共享 · 已经历 ${state.sync} 次 Block 屏障</div>`;
+    }else $('shared-content').innerHTML='<div class="shared-empty">这一版直接从全局数组读取到寄存器，不建立共享内存输入块。</div>';
+    const cvals=[];for(let y=0;y<v;y++)for(let x=0;x<v;x++)cvals.push(state.acc[(tr+y)*n+tc+x]);
+    $('reg-a').innerHTML=operand(state.a,v,1,'a',kind==='globalA'||kind==='sharedA');$('reg-b').innerHTML=operand(state.b,1,v,'b',kind==='globalB'||kind==='sharedB');$('reg-c').innerHTML=operand(cvals,v,v,'c',kind==='fma');
+    $('a-label').textContent=`a · ${v}×1`;$('b-label').textContent=`b · 1×${v}`;$('c-label').textContent=`c · ${v}×${v}`;$('reg-size').textContent=`${v*v} 个累加器 + ${2*v} 个操作数`;
+    $('math').textContent=kind==='fma'?`c[0,0]: ${state.previous} + ${state.a[0]} × ${state.b[0]} = ${cvals[0]}${v>1?`（此步共 ${v*v} 次 FMA）`:''}`:kind==='done'?'完整 C 已与参考乘法逐元素核对':`c 对应全局 C[${tr}:${tr+v}, ${tc}:${tc+v}]，累加后才写回`;
+    $('compute').classList.toggle('active',kind==='fma');$('compute-text').textContent=kind==='fma'?`本步执行 ${v*v} 次 FMA，更新寄存器 c`:'当前展示步骤未执行乘加';
+    $('live-metrics').innerHTML=[['全局输入读取',state.g,t.g,'元素'],['共享内存读取',state.sh,t.sh,'元素'],['累计乘加',state.fma,t.fma,'FMA'],['输出写回',state.w,n*n,'元素']].map(([label,value,total,unit])=>`<div class="metric"><span class="label">${label}</span><span class="value">${fmt(value)}</span><span class="unit">/ ${fmt(total)} ${unit}</span></div>`).join('');
+    $('position').value=pos;$('step-count').textContent=`${fmt(pos)} / ${fmt(events.length-1)} 步`;$('previous').disabled=pos===0;$('next').disabled=pos===events.length-1;$('finish').disabled=pos===events.length-1;$('next-output').disabled=pos===events.length-1;
+    $('insight-title').textContent=mode==='naive'?'每个输出独立取数':mode==='register'?'先在线程内部复用':'再在线程之间复用';
+    $('insight-text').textContent=mode==='naive'?`每个 k 用 2 个输入更新 1 个输出；不同线程会重复请求相同输入。${n}×${n} 输出共读取 ${fmt(t.g)} 个输入元素。`:mode==='register'?`每个 k 读取 2V = ${2*V} 个输入，完成 V² = ${V*V} 次 FMA。模型输入读取降为朴素版的 1/${V}，代价是更多寄存器。`:`每个 k 分块协作加载 2LS = ${2*L*S} 个输入，完成 L²S = ${L*L*S} 次 FMA。模型输入读取降为朴素版的 1/${L}；S 改变缓冲占用与同步频次，不改变总输入读取。`;
+    root.classList.toggle('no-values',!$('show-values').checked);
+  }
+  function renderComparison(){
+    const base=MatmulEngine.totals(cfg,'naive');$('same-work').textContent=`同一输出 C · 全部 ${fmt(base.fma)} 次 FMA · ${fmt(2*base.fma)} FLOPs · FP32`;
+    $('comparison').innerHTML=MatmulEngine.modes.map(mode=>{const t=MatmulEngine.totals(cfg,mode),v=mode==='naive'?1:cfg.V;return `<article class="compare-card ${mode===cfg.mode?'selected':''}"><div class="top"><h3>${names[mode]}</h3><span class="ratio">输入读取 ${base.g/t.g===1?'基准':'降为 1/'+base.g/t.g}</span></div><div class="read-count">${fmt(t.g)}<small>个全局输入元素</small></div><div class="bar-track" aria-label="输入读取相对基准 ${Math.round(t.g/base.g*100)}%"><div class="bar" style="width:${t.g/base.g*100}%"></div></div><dl><dt>输入读取公式</dt><dd>${mode==='naive'?'2N³':mode==='register'?'2N³ / V':'2N³ / L'}</dd><dt>模型总字节（含 C 写回）</dt><dd>${fmt(t.bytes)} B</dd><dt>模型算术强度</dt><dd>${t.ai.toFixed(3)} FLOP/B</dd><dt>每线程数据寄存器</dt><dd>${v*v} + ${2*v} 个 FP32</dd><dt>共享内存 / Block</dt><dd>${t.shared} B</dd><dt>Block 屏障总次数</dt><dd>${t.sync}</dd></dl></article>`;}).join('');
+  }
+  root.querySelectorAll('[data-method]').forEach(b=>b.addEventListener('click',()=>{cfg.mode=b.dataset.method;reset();}));
+  $('operation').addEventListener('change',()=>{cfg.op=$('operation').value;reset();});
+  for(const [id,key] of [['size','n'],['block','L'],['thread','V'],['slice','S']])$(id).addEventListener('change',()=>{cfg[key]=Number($(id).value);reset();});
+  $('next').addEventListener('click',()=>{pause();seek(pos+1);});$('previous').addEventListener('click',()=>{pause();seek(pos-1);});$('restart').addEventListener('click',reset);$('play').addEventListener('click',play);$('finish').addEventListener('click',()=>{pause();seek(events.length-1);});
+  $('next-output').addEventListener('click',()=>{pause();const target=events.findIndex((e,i)=>i>pos&&(e.kind==='store'||e.kind==='storeblock'));seek(target<0?events.length-1:target);});
+  $('position').addEventListener('input',()=>{pause();seek(Number($('position').value));});$('heat').addEventListener('change',render);$('show-values').addEventListener('change',render);$('speed').addEventListener('change',()=>{if(timer!==null){pause();play();}});
+  document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();play();}else if(e.key==='ArrowRight'){e.preventDefault();pause();seek(pos+1);}else if(e.key==='ArrowLeft'){e.preventDefault();pause();seek(pos-1);}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+  window.MatmulLab={get config(){return {...cfg}},get position(){return pos},get length(){return events.length},get state(){return clone(state)},seek,setConfig(patch){Object.assign(cfg,patch);$('operation').value=cfg.op;$('size').value=cfg.n;$('block').value=cfg.L;$('thread').value=cfg.V;$('slice').value=cfg.S;reset();},get event(){return {...events[pos]}}};
+  reset();
+})();
+</script>
+</body>
+</html>

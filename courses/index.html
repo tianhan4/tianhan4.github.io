@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Courses | Han Tian</title>
+  <meta name="description" content="Interactive course materials by Han Tian: GPU matrix multiplication and FlashAttention.">
+  <meta name="author" content="Han Tian">
+  <link rel="stylesheet" href="../stylesheets/styles.css">
+  <link rel="stylesheet" href="courses.css">
+</head>
+<body>
+  <table summary="Table for page layout." id="tlayout">
+    <tr valign="top">
+      <td id="layout-menu">
+        <nav aria-label="Main navigation">
+          <div class="menu-category">Welcome</div>
+          <div class="menu-item"><a href="../index.html">Home</a></div>
+          <div class="menu-item"><a href="../index.html#publications">Publications</a></div>
+          <div class="menu-item"><a href="../index.html#services">Professional Services</a></div>
+          <div class="menu-item"><a href="./" class="current" aria-current="page">Courses</a></div>
+          <div class="menu-item"><a href="https://scholar.google.com/citations?user=XRZMwv4AAAAJ&amp;hl=en&amp;authuser=1">Google Scholar</a></div>
+        </nav>
+      </td>
+      <td id="layout-content">
+        <main>
+          <div id="toptitle"><h1>Courses</h1></div>
+          <p class="intro">Interactive teaching materials by Han Tian.</p>
+          <section aria-labelledby="course-title" lang="zh-CN">
+            <h2 id="course-title">智能计算软件优化</h2>
+            <p class="course-subtitle">Software Optimization for Intelligent Computing</p>
+            <p>第五章 · GPU 架构与计算优化</p>
+            <div class="resource-list">
+              <article class="resource" aria-labelledby="matmul-title">
+                <div class="resource-heading"><span class="resource-number">01</span><div><p class="resource-type">交互演示 · 矩阵乘法</p><h3 id="matmul-title"><a href="demos/matmul.html">GPU 矩阵乘法：从朴素计算到分块复用</a></h3></div></div>
+                <p>对比朴素版、寄存器分块、共享内存＋寄存器分块，逐步观察矩阵访问、数据复用和输出形成的过程。</p>
+                <ul class="topics"><li>HBM 与片上存储</li><li>分块与复用</li><li>Aᵀ 过程视图</li></ul>
+                <div class="resource-actions"><a class="open-demo" href="demos/matmul.html">打开演示 →</a><a href="demos/matmul.html" download="矩阵乘法交互演示.html">下载 HTML</a></div>
+              </article>
+              <article class="resource" aria-labelledby="attention-title">
+                <div class="resource-heading"><span class="resource-number">02</span><div><p class="resource-type">交互演示 · Attention</p><h3 id="attention-title"><a href="demos/flashattention.html">FlashAttention 与 FlashAttention-2：矩阵子块搬运</a></h3></div></div>
+                <p>在完整 Q、Kᵀ、V 矩阵上选中实际子块，跟随元素从 HBM 进入 GPU 片上区域，观察局部计算、在线 Softmax 与 O 的逐块写回。</p>
+                <ul class="topics"><li>标准 Attention 对照</li><li>在线 Softmax</li><li>FA1 / FA2 分工</li></ul>
+                <div class="resource-actions"><a class="open-demo" href="demos/flashattention.html">打开演示 →</a><a href="demos/flashattention.html" download="FlashAttention交互演示.html">下载 HTML</a><a href="demos/flashattention-detail.html">数值与代码版</a></div>
+              </article>
+            </div>
+            <aside class="usage-note"><strong>使用方式</strong><p>直接在浏览器中打开；支持播放、暂停和逐步观察。下载后的 HTML 可离线运行。演示用于理解数据流与计算方式，播放速度不代表真实 GPU 性能。</p></aside>
+          </section>
+        </main>
+        <div id="footer"><div id="footer-text"><a href="../index.html">Han Tian · Home</a></div></div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
