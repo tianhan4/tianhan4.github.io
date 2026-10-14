@@ -3,142 +3,149 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Step through Ring AllReduce: parallel chunk transfers, Reduce-Scatter accumulation, and All-Gather replication.">
-<title>Ring AllReduce · 数据如何绕环求和</title>
+<meta name="description" content="A continuous animation of Ring AllReduce. Watch chunks move between GPUs, merge during Reduce-Scatter, and replicate during All-Gather.">
+<title>Ring AllReduce · 数据块流转动画</title>
 <style>
-:root{color-scheme:light;--bg:#f5f4f8;--paper:#fff;--ink:#252336;--muted:#686579;--line:#dedbe8;--purple:#6540a4;--soft:#eee8f8;--green:#16745c;--code:#252237;--c0:#2c78b0;--c1:#148572;--c2:#a06b21;--c3:#8053b2;--c4:#b64c68;--c5:#547c34;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.55}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}button,input,select{font:inherit}button,select{cursor:pointer}button{min-height:38px;padding:7px 12px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}button:hover:not(:disabled){background:var(--soft)}button:disabled{opacity:.4;cursor:default}button.primary{background:var(--purple);color:white;border-color:var(--purple)}button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:3px solid #9b7bd0;outline-offset:3px}a{color:var(--purple)}.course-nav{max-width:1450px;margin:auto;padding:16px 28px 0;font-size:12px}.course-nav a{text-decoration:none}.shell{max-width:1450px;padding:20px 28px 36px;margin:auto}h1{margin:0;font-size:30px;letter-spacing:-.035em;font-weight:650}h2{font-size:15px;margin:0;font-weight:650}p{margin:0}.eyebrow{color:var(--purple);font-size:11px;letter-spacing:.1em;margin-bottom:5px}.heading-en{color:var(--muted);margin-top:3px;font-size:14px}.subtitle{color:var(--muted);margin-top:9px}.config{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:17px 0}.config label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}select{border:1px solid var(--line);border-radius:6px;padding:7px 9px;color:var(--ink);background:var(--paper)}.legend{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-left:auto}.legend>span{font-size:12px;color:var(--muted)}.chunk-choice{padding:3px 8px;min-height:29px;display:flex;align-items:center;gap:6px;font-size:12px}.chunk-choice i{width:8px;height:8px;background:var(--chunk);border-radius:2px}.chunk-choice[aria-pressed=true]{box-shadow:inset 0 0 0 1px var(--purple);background:var(--soft)}.control-panel{background:var(--paper);border:1px solid var(--line);border-radius:11px;margin-bottom:16px;overflow:hidden}.toolbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:12px 14px}.toolbar .speed{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}.timeline{display:flex;align-items:center;gap:10px;padding:0 15px 12px}.timeline label,.timeline output{font-size:12px;color:var(--muted)}.timeline input{flex:1;min-width:80px;accent-color:var(--purple)}.timeline output{min-width:74px;text-align:right;font-variant-numeric:tabular-nums}.phases{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}.phase-tab{border:0;border-radius:0;text-align:left;padding:9px 15px;font-size:12px;color:var(--muted)}.phase-tab:first-child{border-right:1px solid var(--line)}.phase-tab[aria-current=step]{background:var(--soft);color:var(--purple)}.phase-tab strong{font-weight:600}.phase-tab span{margin-left:7px}.workspace{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;align-items:start}.panel{background:var(--paper);border:1px solid var(--line);border-radius:11px;overflow:hidden}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}.panel-head .hint{font-size:11px;color:var(--muted)}.bilingual{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}.code{font:12px/1.7 "SFMono-Regular",Consolas,monospace;background:var(--code);color:#d7d2e7;padding:11px 0;overflow-wrap:anywhere}.code-line{display:flex;gap:9px;padding:4px 11px 4px 0;border-left:3px solid transparent;min-height:28px;align-items:baseline}.code-line .ln{flex:0 0 25px;color:#918aa9;text-align:right;user-select:none}.code-line .src{white-space:pre-wrap}.code-line.active{background:#594280;border-color:#d3b5ff;color:#fff}.context{padding:12px 15px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}.context strong{color:var(--ink);font-weight:550}.story{padding:15px}.story .phase-name{color:var(--purple);font-size:13px;font-weight:600}.story .phase-en{font-size:11px;color:var(--muted);margin:3px 0 10px}.story .sentence{line-height:1.7;min-height:60px}.arithmetic{background:var(--bg);padding:11px;margin-top:11px;border-radius:7px;font:12px/1.8 "SFMono-Regular",Consolas,monospace;overflow-wrap:anywhere}.arithmetic .label{font:11px/1.6 system-ui,sans-serif;color:var(--muted);margin-bottom:4px}.trace{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)}.trace b{font-weight:500;color:var(--ink);background:var(--bg);padding:2px 6px;border-radius:3px}.step-note{font-size:12px;color:var(--muted);padding:0 15px 15px}.ring-wrap{padding:9px 12px 2px}.ring-svg{width:100%;height:auto;display:block;max-height:340px;overflow:visible}.ring-svg text{font-family:Inter,"PingFang SC",system-ui,sans-serif;fill:var(--ink)}.ring-node{cursor:pointer}.ring-node rect{fill:var(--bg);stroke:var(--line);stroke-width:1.5}.ring-node.selected rect{fill:var(--soft);stroke:var(--purple);stroke-width:2}.ring-node text{font-size:15px;font-weight:550}.ring-node .small{font-size:11px;font-weight:400;fill:var(--muted)}.ring-svg .packet-text{font-size:12px;font-weight:550}.ring-svg .packet-sub{font-size:10px;font-weight:400}.ring-svg .center-title{font-size:17px;font-weight:550}.ring-svg .center-sub{font-size:12px;fill:var(--muted)}.ring-key{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:0 16px 11px;font-size:11px;color:var(--muted)}.buffers{padding:13px 15px 15px;border-top:1px solid var(--line)}.buffers-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}.buffers-head span{font-size:11px;color:var(--muted)}.gpu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.gpu-card{border:1px solid var(--line);border-radius:7px;overflow:hidden}.gpu-card.selected{border-color:#baa1dd}.gpu-head{background:var(--bg);padding:7px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px}.gpu-head button{border:0;background:transparent;min-height:25px;padding:0;font-weight:550;text-align:left}.gpu-head span{font-size:10px;color:var(--muted)}.chunk-row{display:grid;grid-template-columns:35px minmax(65px,1fr) 84px 30px;gap:6px;align-items:center;padding:5px 9px;min-height:31px;border-top:1px solid #eeecf3;font-size:12px}.chunk-row .tag{font-weight:550;color:var(--chunk)}.chunk-row .vals{font:12px "SFMono-Regular",Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}.chunk-row .sources{display:flex;gap:2px}.chunk-row .src-dot{background:#eae7f0;color:#aaa4b6;font-size:9px;width:12px;height:15px;display:flex;align-items:center;justify-content:center;border-radius:2px}.chunk-row .src-dot.included{background:color-mix(in srgb,var(--chunk) 17%,white);color:var(--ink)}.chunk-row .status{color:var(--muted);font-size:10px;text-align:right}.chunk-row.final .status{color:var(--green)}.chunk-row.focus{background:color-mix(in srgb,var(--chunk) 7%,white)}.chunk-row.target{box-shadow:inset 3px 0 var(--chunk);background:color-mix(in srgb,var(--chunk) 10%,white)}.chunk-row.inactive{opacity:.42}.metrics{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:#fbfafd}.metric{padding:10px 15px}.metric+.metric{border-left:1px solid var(--line)}.metric .label{font-size:11px;color:var(--muted)}.metric .value{font-size:21px;font-variant-numeric:tabular-nums;margin-top:2px;letter-spacing:-.02em}.metric small{font-size:11px;color:var(--muted);margin-left:5px}.metric .foot{font-size:10px;color:var(--muted);margin-top:2px}.result-note{margin-top:14px;padding:12px 16px;border:1px solid #b5d9c7;border-radius:8px;background:#edf7f1;color:#185e48;font-size:13px}.math-notes{margin-top:19px;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:13px 16px;font-size:12px}.math-notes summary{cursor:pointer;font-weight:550}.math-notes .notes-body{margin-top:12px;color:var(--muted);line-height:1.8}.math-notes .formula{font:14px/1.8 Georgia,serif;color:var(--ink);margin:8px 0}.math-notes ul{padding-left:18px;margin:8px 0}.math-notes li{margin:5px 0}.sources-links{margin-top:11px;display:flex;gap:18px;flex-wrap:wrap}.footer{font-size:11px;color:var(--muted);margin-top:15px}.mobile-hint{display:none}
-@media(max-width:1080px){.workspace{grid-template-columns:285px minmax(0,1fr)}.shell{padding:20px}.chunk-row{grid-template-columns:30px minmax(58px,1fr) 76px 25px;gap:3px;padding:5px 6px}.legend{margin-left:0}.code{font-size:11px}.ring-svg .center-title{font-size:16px}}
-@media(max-width:820px){.workspace{grid-template-columns:1fr}.shell{padding:16px 12px 28px}.course-nav{padding:14px 12px 0}.left-panel{order:2}.visual-panel{order:1}h1{font-size:25px}.heading-en{font-size:12px}.code{font-size:12px}.story .sentence{min-height:0}.ring-wrap{overflow-x:auto}.ring-svg{min-width:570px}.mobile-hint{display:inline}.metric{padding:10px}.metric .value{font-size:18px}.toolbar .speed{margin-left:0}.phase-tab span{display:block;margin:0}.ring-key{font-size:10px}.gpu-grid{grid-template-columns:1fr}.chunk-row{grid-template-columns:40px minmax(65px,1fr) 95px 32px;gap:8px;padding:6px 10px}.gpu-head span,.metric .foot{font-size:11px}.chunk-row .src-dot{font-size:10px;width:14px}.timeline{gap:7px}.config{gap:10px}.subtitle{font-size:12px}}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+:root{color-scheme:light;--bg:#f5f4f8;--paper:#fff;--ink:#282437;--muted:#706a80;--line:#e1dce9;--purple:#6540a4;--soft:#eee8f8;--c0:#2979b5;--c1:#148578;--c2:#b17a20;--c3:#8a54b4;--t0:#e6f2fa;--t1:#e4f4ef;--t2:#fcf2dc;--t3:#f0e8f9;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg)}a{color:var(--purple)}button,select,input{font:inherit}button{padding:8px 13px;min-height:37px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);cursor:pointer}button:hover:not(:disabled){background:var(--soft)}button:disabled{opacity:.4;cursor:default}button.primary{background:var(--purple);border-color:var(--purple);color:#fff}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #a17cdb;outline-offset:3px}select{border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:var(--paper);color:var(--ink)}.shell{max-width:1390px;padding:18px 26px 28px;margin:auto}.course-nav{font-size:12px;margin-bottom:16px}.course-nav a{text-decoration:none}header{display:flex;align-items:baseline;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-bottom:15px}h1{font-size:27px;letter-spacing:-.025em;margin:0;font-weight:650}.heading-en{font-size:13px;color:var(--muted)}.controls{background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:13px}.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:11px 13px}.toolbar label{margin-left:auto;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}.timeline{display:flex;align-items:center;gap:10px;padding:0 14px 11px;font-size:12px;color:var(--muted)}.timeline input{flex:1;min-width:80px;accent-color:var(--purple)}.timeline output{font-variant-numeric:tabular-nums;min-width:93px;text-align:right}.phases{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}.phase-tab{border:0;border-radius:0;text-align:left;padding:8px 14px;font-size:12px;color:var(--muted)}.phase-tab:first-child{border-right:1px solid var(--line)}.phase-tab[aria-current=step]{background:var(--soft);color:var(--purple)}.phase-tab strong{font-weight:600}.legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 2px;margin-bottom:11px}.legend .hint{font-size:12px;color:var(--muted);margin-left:auto}.chunk-choice{min-height:30px;padding:3px 9px;font-size:12px;display:flex;align-items:center;gap:6px}.chunk-choice i{height:9px;width:9px;border-radius:3px;background:var(--chunk)}.chunk-choice[aria-pressed=true]{background:var(--soft);border-color:#bca4dc}.stage{border:1px solid var(--line);border-radius:12px;background:var(--paper);overflow:hidden}.board-wrap{overflow:hidden;padding:0}.board{width:100%;height:auto;display:block}.board text{font-family:Inter,"PingFang SC",system-ui,sans-serif;fill:var(--ink)}.gpu-shell{fill:#faf9fc;stroke:var(--line);stroke-width:1.5}.gpu-heading{font-size:17px;font-weight:600}.gpu-hint{font-size:11px;fill:var(--muted)!important}.tile-label{font-size:15px;font-weight:600}.tile-count{font-size:11px;fill:var(--muted)!important}.source-chip text{font-size:11px;font-weight:550}.tile-empty text{font-size:11px;fill:#9b94aa}.tile-empty .empty-id{font-size:13px}.tile-empty rect{fill:#f4f2f7;stroke:#e3dfea;stroke-width:1;stroke-dasharray:4 4}.center-title{font-size:24px;font-weight:600}.center-step{font-size:16px;fill:var(--muted)!important}.center-action{font-size:15px;fill:var(--purple)!important}.center-note{font-size:12px;fill:var(--muted)!important}.merge-sign{font-size:26px;font-weight:600}.center-line{stroke:var(--line);stroke-width:1}.caption{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid var(--line);font-size:13px}.caption .en{font-size:12px;color:var(--muted)}.status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}.status span{padding:3px 7px;border-radius:4px;background:#f4f2f7}.status span.active{background:var(--soft);color:var(--purple)}.footnote{font-size:11px;color:var(--muted);margin:11px 1px 0;line-height:1.7}.footer{font-size:11px;color:var(--muted);margin-top:8px}
+@media(max-width:700px){.shell{padding:12px 10px 22px}header{gap:3px}h1{font-size:22px}.heading-en{font-size:12px}.course-nav{font-size:11px;margin-bottom:12px}.toolbar{padding:10px;gap:6px}.toolbar button{padding:7px 10px;font-size:12px}.toolbar label{margin-left:0}.legend .hint{margin-left:0;width:100%;font-size:11px}.phase-tab{padding:8px 10px;font-size:11px}.phase-tab .detail{display:block}.board-wrap{overflow-x:auto}.board{min-width:800px}.caption{padding:10px 12px}.caption .en{display:block;margin-top:2px}.footnote{font-size:11px}.timeline{font-size:11px}.timeline output{min-width:83px}}
 </style>
 </head>
 <body>
+<main class="shell">
 <nav class="course-nav" aria-label="Course navigation"><a href="https://tianhan4.github.io/courses/">← Courses · Software Optimization for Intelligent Computing</a></nav>
-<main class="shell" id="ring-lab">
-<header><div class="eyebrow">CHAPTER 6 · DISTRIBUTED TRAINING</div><h1>Ring AllReduce：数据如何绕环求和</h1><div class="heading-en" lang="en">From local chunks to a complete sum on every GPU</div><p class="subtitle">先归约分片，再收集结果。跟随每一轮并行传输，看清“相加”和“复制”的区别。</p></header>
-<div class="config"><label for="ranks">GPU 数量 Ranks <select id="ranks"><option value="2">2 GPUs</option><option value="3">3 GPUs</option><option value="4" selected>4 GPUs</option><option value="6">6 GPUs</option></select></label><label for="rank-focus">观察 GPU Focus <select id="rank-focus"></select></label><div class="legend" id="chunk-legend" role="group" aria-label="追踪数据块 Track a chunk"></div></div>
-<section class="control-panel" aria-label="播放控制 Playback controls"><div class="toolbar"><button id="play" class="primary" type="button" aria-pressed="false">▶ 播放 Play</button><button id="back" type="button">← 上一步 Back</button><button id="next" type="button">下一步 Next →</button><button id="next-round" type="button">下一轮 Next round</button><button id="result" type="button">完整结果 Result</button><button id="reset" type="button">↺ 重置 Reset</button><label class="speed" for="speed">速度 Speed <select id="speed"><option value="2400">慢速 Slow</option><option value="1600" selected>标准 Normal</option><option value="900">快速 Fast</option></select></label></div><div class="timeline"><label for="position">进度 Step</label><input id="position" type="range" min="0" value="0" step="1"><output id="position-label" for="position"></output></div><div class="phases"><button id="phase-rs" class="phase-tab" type="button"><strong>① Reduce-Scatter</strong><span>分块求和 · N−1 轮</span></button><button id="phase-ag" class="phase-tab" type="button"><strong>② All-Gather</strong><span>复制结果 · N−1 轮</span></button></div></section>
-<div class="workspace">
-<section class="panel left-panel" aria-labelledby="code-heading"><div class="panel-head"><h2 id="code-heading">每个 GPU 执行什么<span class="bilingual" lang="en">Per-rank execution</span></h2><span class="hint">伪代码 Pseudocode</span></div><div class="code" id="code"></div><div class="context" id="context"></div><div class="story" aria-live="polite"><div class="phase-name" id="story-title"></div><div class="phase-en" lang="en" id="story-en"></div><p class="sentence" id="story-text"></p><div class="arithmetic" id="arithmetic"></div><div class="trace" id="trace"></div></div><p class="step-note">同一轮所有 GPU 同时发送和接收。页面先展示传输，再展示接收后的缓冲区。</p></section>
-<section class="panel visual-panel" aria-labelledby="ring-heading"><div class="panel-head"><h2 id="ring-heading">逻辑通信环<span class="bilingual" lang="en">Logical ring · parallel transfers</span></h2><span class="hint">点击节点切换观察 GPU <span class="mobile-hint">· 环图可横向滑动</span></span></div><div class="ring-wrap" id="ring"></div><div class="ring-key"><span id="ring-direction"></span><span>箭头：发送方向 · 包内 Cₖ：数据块编号</span></div><div class="buffers"><div class="buffers-head"><h2>各 GPU 的本地缓冲区 <span class="bilingual" lang="en">Local chunk buffers</span></h2><span>小方块 0…N−1：已包含哪些 GPU 的贡献 · ✓：该块求和完成</span></div><div class="gpu-grid" id="buffers"></div></div><div class="metrics"><div class="metric"><div class="label">完成的通信轮 Rounds</div><div class="value" id="round-count"></div><div class="foot">每轮同时发送 / 接收一个块</div></div><div class="metric"><div class="label">每 GPU 已发送 Sent / rank</div><div class="value" id="sent-count"></div><div class="foot" id="sent-foot"></div></div><div class="metric"><div class="label">全局求和块 Final chunks / rank</div><div class="value" id="final-count"></div><div class="foot" id="final-foot"></div></div></div></section>
-</div>
-<div class="result-note" id="result-note" hidden></div>
-<details class="math-notes"><summary>通信量、时间模型与演示口径 · Cost model &amp; assumptions</summary><div class="notes-body"><p>每个 GPU 的输入被等分为 N 块。演示每块 2 个 float32，因此每块 8 字节，单 GPU 的原始数据大小 S = 8N 字节；初始数值只是教学示例。</p><div class="formula">通信轮数 = 2(N−1)<br>每 GPU 发送量 = 2(N−1)S/N；接收量相同<br>T ≈ 2(N−1)α + 2(N−1)S/(Nβ)</div><ul><li>α 是每轮启动延迟，β 是有效链路带宽（字节/秒）。模型假定块大小相同、各链路可并行，并忽略归约计算和链路争用。发送与接收重叠，因此时间模型不用再乘 2。</li><li>Reduce-Scatter 第 s 轮（s 从 0 开始），GPU r 发送 C[(r−s) mod N]；结束后 GPU r 持有完整求和块 C[(r+1) mod N]。All-Gather 从这个块开始转发。</li><li>右侧保留部分缓冲区用于教学；Reduce-Scatter 完成后，淡化的块属于中间状态，只有标记 ✓ 的块是该 GPU 的有效归约结果。</li><li>本演示执行 SUM。若需要 MEAN，可在完成后再除以 N；SUM 不会自动变成均值。All-Gather 只复制完整结果，不能再次相加。</li><li>逻辑环不等于物理 GPU 排列。真实实现会切分更小的数据片、流水执行，并可能使用多通道。大消息下带宽项接近 2S/β；小消息或 GPU 数量大时，线性增长的延迟项仍然重要。</li></ul><div class="sources-links"><a href="https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/" target="_blank" rel="noopener">Baidu Research · Ring AllReduce</a><a href="https://github.com/baidu-research/baidu-allreduce" target="_blank" rel="noopener">Reference implementation</a><a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html" target="_blank" rel="noopener">NCCL · Collective operations</a></div></div></details>
-<footer class="footer">Han Tian · Software Optimization for Intelligent Computing · 教学模型，非性能测量 / Teaching model, not a benchmark</footer>
+<header><h1>Ring AllReduce · 数据块流转</h1><div class="heading-en" lang="en">Reduce-Scatter → All-Gather · 4 GPUs</div></header>
+<section class="controls" aria-label="动画控制 Animation controls">
+<div class="toolbar"><button id="play" class="primary" type="button" aria-pressed="false">▶ 播放 Play</button><button id="back" type="button">← 上一轮 Back</button><button id="next" type="button">播放一轮 One round →</button><button id="reset" type="button">↺ 回到开始 Reset</button><button id="result" type="button">最终结果 Result</button><label for="speed">速度 Speed <select id="speed"><option value="6500">慢速 Slow</option><option value="4600" selected>标准 Normal</option><option value="2700">快速 Fast</option></select></label></div>
+<div class="timeline"><label for="position">过程 Progress</label><input id="position" type="range" min="0" max="6" step="0.001" value="0"><output id="position-label" for="position">0 / 6 轮</output></div>
+<div class="phases"><button id="phase-rs" class="phase-tab" type="button" aria-current="step"><strong>① Reduce-Scatter</strong><span class="detail"> · 转交＋合并 · 每 GPU 4 → 1 块</span></button><button id="phase-ag" class="phase-tab" type="button" aria-current="false"><strong>② All-Gather</strong><span class="detail"> · 保留＋复制 · 每 GPU 1 → 4 块</span></button></div>
+</section>
+<div class="legend" role="group" aria-label="追踪同色块 Track a chunk"><button class="chunk-choice" type="button" data-chunk="-1" aria-pressed="true">全部 All</button><button class="chunk-choice" style="--chunk:var(--c0)" type="button" data-chunk="0" aria-pressed="false"><i aria-hidden="true"></i>C0</button><button class="chunk-choice" style="--chunk:var(--c1)" type="button" data-chunk="1" aria-pressed="false"><i aria-hidden="true"></i>C1</button><button class="chunk-choice" style="--chunk:var(--c2)" type="button" data-chunk="2" aria-pressed="false"><i aria-hidden="true"></i>C2</button><button class="chunk-choice" style="--chunk:var(--c3)" type="button" data-chunk="3" aria-pressed="false"><i aria-hidden="true"></i>C3</button><span class="hint">同色＝同一分块 · 块内数字＝贡献的 GPU · Σ＝已完成求和</span></div>
+<section class="stage" aria-label="数据块流转动画 Chunk flow animation"><div class="board-wrap" id="board-wrap"></div><div class="caption" aria-live="polite"><div><span id="caption-text"></span><span class="en" id="caption-en" lang="en"></span></div><div class="status" aria-label="当前动作 Current action"><span data-stage="prepare">准备</span><span data-stage="travel">流转</span><span data-stage="merge">合并 / 复制</span><span data-stage="hold">完成本轮</span></div></div></section>
+<p class="footnote">这里展示每个 GPU 仍需持有的有效块：Reduce-Scatter 中，已转交的临时块不再显示；All-Gather 中，完整求和块保留在原节点，再复制到下一个节点。此视图说明算法的数据依赖，真实实现可复用缓冲区。小屏幕可横向滑动查看全环。</p>
+<footer class="footer">Han Tian · Chapter 6 · <a href="https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/" target="_blank" rel="noopener">Ring AllReduce reference</a></footer>
 </main>
 <script>
-const RingEngine=(()=>{
- const mod=(x,n)=>(x%n+n)%n,clone=x=>JSON.parse(JSON.stringify(x));
- function original(n){return Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>({values:[r*10+c*2+1,r*10+c*2+2],sources:[r]})));}
- function build(n){
-  if(![2,3,4,6].includes(n))throw new Error('Unsupported rank count');
-  let buffers=original(n),sent=0,completed=0;const events=[{phase:'init',kind:'init',round:-1,buffers:clone(buffers),transfers:[],sent,completed}];
-  for(const phase of ['rs','ag'])for(let round=0;round<n-1;round++){
-   const transfers=Array.from({length:n},(_,from)=>{const chunk=mod(from+(phase==='rs'?0:1)-round,n),to=mod(from+1,n);return {from,to,chunk,payload:clone(buffers[from][chunk]),before:clone(buffers[to][chunk])};});
-   sent+=8;events.push({phase,kind:'send',round,buffers:clone(buffers),transfers:clone(transfers),sent,completed});
-   for(const t of transfers){const old=buffers[t.to][t.chunk];
+const RingFlowEngine=(()=>{
+ const n=4,clone=x=>JSON.parse(JSON.stringify(x)),mod=x=>(x%n+n)%n;
+ const initial=()=>Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>({chunk:c,sources:[r],values:[r*10+c*2+1,r*10+c*2+2]})));
+ function build(){
+  let state=initial();const rounds=[],snapshots=[clone(state)];
+  for(const phase of ['rs','ag'])for(let step=0;step<n-1;step++){
+   const before=clone(state),transfers=Array.from({length:n},(_,from)=>{const chunk=mod(from+(phase==='rs'?0:1)-step),to=mod(from+1),payload=clone(state[from][chunk]);if(!payload)throw new Error('Missing send chunk');return {from,to,chunk,payload,local:clone(state[to][chunk])};});
+   if(phase==='rs')for(const t of transfers)state[t.from][t.chunk]=null;
+   for(const t of transfers){
     if(phase==='rs'){
-     if(t.payload.sources.some(r=>old.sources.includes(r)))throw new Error('Duplicate contribution');
-     buffers[t.to][t.chunk]={values:old.values.map((v,i)=>v+t.payload.values[i]),sources:[...old.sources,...t.payload.sources].sort((a,b)=>a-b)};
+     const local=state[t.to][t.chunk];if(!local||t.payload.sources.some(r=>local.sources.includes(r)))throw new Error('Invalid reduction');
+     state[t.to][t.chunk]={chunk:t.chunk,sources:[...local.sources,...t.payload.sources].sort((a,b)=>a-b),values:local.values.map((v,i)=>v+t.payload.values[i])};
     }else{
-     if(t.payload.sources.length!==n)throw new Error('All-Gather payload is not fully reduced');
-     buffers[t.to][t.chunk]=clone(t.payload);
+     if(t.payload.sources.length!==n)throw new Error('Incomplete All-Gather chunk');
+     state[t.to][t.chunk]=clone(t.payload);
     }
    }
-   completed++;events.push({phase,kind:'apply',round,buffers:clone(buffers),transfers:clone(transfers),sent,completed});
+   rounds.push({phase,step,before,after:clone(state),transfers});snapshots.push(clone(state));
   }
-  return events;
+  return {rounds,snapshots};
  }
- function reference(n){const a=original(n);return Array.from({length:n},(_,c)=>a.reduce((s,row)=>s.map((v,i)=>v+row[c].values[i]),[0,0]));}
- return {mod,original,build,reference};
+ return {initial,build};
 })();
-window.RingEngine=RingEngine;
+window.RingFlowEngine=RingFlowEngine;
 (()=>{
- const $=id=>document.getElementById(id),vector=v=>'['+v.join(', ')+']',chunkName=c=>'C'+c;
- const lines=['切分为 N 个等大块 / split chunks','for s = 0 .. N−2:  // Reduce-Scatter','  k = (rank − s) mod N','  sendrecv(chunk[k], next, prev)','  chunk[recv_k] += received','for s = 0 .. N−2:  // All-Gather','  k = (rank + 1 − s) mod N','  sendrecv(chunk[k], next, prev)','  chunk[recv_k] = received  // copy','return chunks  // SUM on every GPU'];
- let n=4,rank=0,focus=-1,pos=0,events=[],timer=null;
- const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
- function stop(){if(timer!==null)clearTimeout(timer);timer=null;$('play').textContent=pos===events.length-1?'↺ 重播 Replay':'▶ 播放 Play';$('play').setAttribute('aria-pressed','false');}
- function seek(x){pos=Math.max(0,Math.min(events.length-1,Number(x)));render();if(pos===events.length-1)stop();}
- function schedule(){timer=setTimeout(()=>{seek(pos+1);if(pos<events.length-1)schedule();},Number($('speed').value));}
- function play(){if(timer!==null){stop();return;}if(pos===events.length-1)seek(0);$('play').textContent='Ⅱ 暂停 Pause';$('play').setAttribute('aria-pressed','true');schedule();}
- function reset(){stop();events=RingEngine.build(n);pos=0;rank=Math.min(rank,n-1);if(focus>=n)focus=-1;$('rank-focus').innerHTML=Array.from({length:n},(_,r)=>`<option value="${r}">GPU ${r}</option>`).join('');$('rank-focus').value=String(rank);$('position').max=events.length-1;$('code').innerHTML=lines.map((s,i)=>`<div class="code-line" data-line="${i}"><span class="ln">${i+1}</span><span class="src">${s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span></div>`).join('');render();}
- function legend(){ $('chunk-legend').innerHTML='<span>追踪 Chunk</span>'+[-1,...Array.from({length:n},(_,c)=>c)].map(c=>`<button type="button" class="chunk-choice" data-chunk="${c}" aria-pressed="${focus===c}" style="--chunk:var(--c${Math.max(c,0)})">${c<0?'全部 All':`<i aria-hidden="true"></i>C${c}`}</button>`).join('');}
- function bufferView(e){
-  $('buffers').innerHTML=e.buffers.map((chunks,r)=>{
-   const receiving=e.transfers.find(t=>t.to===r),sending=e.transfers.find(t=>t.from===r),count=chunks.filter(c=>c.sources.length===n).length;
-   return `<div class="gpu-card ${r===rank?'selected':''}"><div class="gpu-head"><button type="button" data-rank="${r}" aria-pressed="${rank===r}">GPU ${r}</button><span>${count}/${n} 个完整结果块</span></div>`+chunks.map((b,c)=>{
-    const complete=b.sources.length===n,target=receiving&&receiving.chunk===c,obsolete=e.phase==='rs'&&e.round===n-2&&e.kind==='apply'&&!complete;
-    return `<div class="chunk-row ${complete?'final':''} ${focus===c?'focus':''} ${target?'target':''} ${obsolete?'inactive':''}" style="--chunk:var(--c${c})"><span class="tag">C${c}</span><span class="vals">${vector(b.values)}</span><span class="sources" aria-label="已包含 GPU ${b.sources.join(', ')} 的贡献">${Array.from({length:n},(_,s)=>`<span class="src-dot ${b.sources.includes(s)?'included':''}">${s}</span>`).join('')}</span><span class="status">${complete?'✓':b.sources.length+'/'+n}</span></div>`;
-   }).join('')+'</div>';
-  }).join('');
- }
- function ringView(e){
-  const W=760,H=320,cx=380,cy=158,rx=252,ry=103;
-  const points=Array.from({length:n},(_,r)=>{const a=-Math.PI/2+r*2*Math.PI/n;return {x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a),a};});
-  let paths='',nodes='',packets='';
-  for(let r=0;r<n;r++){
-   const p=points[r],q=points[(r+1)%n],mid=p.a+Math.PI/n,mx=cx+(rx+25)*Math.cos(mid),my=cy+(ry+30)*Math.sin(mid);
-   const dx=q.x-p.x,dy=q.y-p.y,length=Math.hypot(dx,dy),ux=dx/length,uy=dy/length;
-   const sx=p.x+ux*41,sy=p.y+uy*29,ex=q.x-ux*41,ey=q.y-uy*29;
-   const t=e.transfers.find(t=>t.from===r),selected=t&&(focus<0||focus===t.chunk),color=t?`var(--c${t.chunk})`:'var(--line)',d=`M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}`;
-   paths+=`<path id="ring-edge-${r}" d="${d}" fill="none" stroke="${color}" stroke-width="${t?2.5:1.5}" opacity="${t&&!selected ? .2 : 1}" marker-end="url(#arrow-${r})"/>`;
-   if(t&&e.kind==='send'){
-    const tx=.25*sx+.5*mx+.25*ex,ty=.25*sy+.5*my+.25*ey,animate=!reduced();
-    packets+=`<g opacity="${selected?1:.25}" ${animate?'':`transform="translate(${tx},${ty})"`}><rect x="-32" y="-18" width="64" height="36" rx="6" fill="var(--paper)" stroke="${color}" stroke-width="1.5"/><text class="packet-text" text-anchor="middle" y="-2">C${t.chunk}</text><text class="packet-sub" text-anchor="middle" y="12">${t.payload.sources.length}/${n} 贡献</text>${animate?`<animateMotion dur="${Number($('speed').value)*.72/1000}s" fill="freeze" path="${d}" keyPoints="0;.70" keyTimes="0;1" calcMode="linear"/>`:''}</g>`;
-   }
-   nodes+=`<g class="ring-node ${rank===r?'selected':''}" data-rank="${r}" role="button" tabindex="0" aria-label="观察 GPU ${r}" transform="translate(${p.x},${p.y})"><rect x="-49" y="-27" width="98" height="54" rx="9"/><text text-anchor="middle" y="-2">GPU ${r}</text><text class="small" text-anchor="middle" y="16">${e.buffers[r].filter(c=>c.sources.length===n).length}/${n} 完整块</text></g>`;
+ const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),lerp=(a,b,t)=>a+(b-a)*t;
+ const model=RingFlowEngine.build(),nodes=[{x:38,y:20},{x:914,y:20},{x:914,y:348},{x:38,y:348}],cw=248,ch=210,tw=216,th=32;
+ let time=0,playing=false,raf=null,lastStamp=null,stopAt=6,focus=-1,lastAnnouncement='',paths=[],packetGroups=[],slots=[],sourceCache=[];
+ const center=(r,c)=>({x:nodes[r].x+cw/2,y:nodes[r].y+60+c*36});
+ const svgEl=(tag,attrs={})=>{const el=document.createElementNS(NS,tag);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,String(v));return el;};
+ function tileMarkup(c,prefix){return `<rect class="tile-fill" x="-${tw/2}" y="-${th/2}" width="${tw}" height="${th}" rx="6" fill="var(--t${c})" stroke="var(--c${c})" stroke-opacity=".32"/><text class="tile-label" x="-${tw/2-12}" y="5" style="fill:var(--c${c})">C${c}</text>${Array.from({length:4},(_,r)=>`<g class="source-chip" data-source="${r}" transform="translate(${-30+r*27},0)"><rect x="-10" y="-10" width="20" height="20" rx="4" fill="var(--c${c})"/><text text-anchor="middle" y="4" style="fill:white">${r}</text></g>`).join('')}<text class="tile-count" data-count="${prefix}" x="98" y="4" text-anchor="end"></text>`;}
+ function mount(){
+  const svg=svgEl('svg',{class:'board',viewBox:'0 0 1200 580',role:'img','aria-label':'四个 GPU 上的有效数据块沿环流转。Reduce-Scatter 转交并合并同色块，All-Gather 保留并复制完整结果。'});
+  svg.innerHTML='<title>Ring AllReduce 数据块流转</title><defs><filter id="packet-shadow" x="-30%" y="-80%" width="160%" height="260%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#322241" flood-opacity=".12"/></filter></defs>';
+  const edges=svgEl('g',{'aria-hidden':'true'});svg.appendChild(edges);
+  for(let r=0;r<4;r++){
+   const path=svgEl('path',{id:'flow-path-'+r,fill:'none','stroke-width':2.5,'stroke-linecap':'round'}),arrow=svgEl('path',{id:'flow-arrow-'+r,d:'M -7 -5 L 7 0 L -7 5 Z'});edges.append(path,arrow);paths.push({path,arrow});
   }
-  const stage=e.phase==='init'?'初始本地数据':e.phase==='rs'?'Reduce-Scatter':'All-Gather',step=e.phase==='init'?'N 个 GPU · N 个分块':`第 ${e.round+1}/${n-1} 轮 · ${e.kind==='send'?'发送 / Send':e.phase==='rs'?'相加 / Add':'复制 / Copy'}`;
-  $('ring').innerHTML=`<svg class="ring-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${stage}，${step}。各 GPU 向下一节点发送数据块。"><title>Ring AllReduce 通信过程</title><defs>${Array.from({length:n},(_,r)=>{const t=e.transfers.find(t=>t.from===r);return `<marker id="arrow-${r}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="${t?`var(--c${t.chunk})`:'var(--line)'}"/></marker>`;}).join('')}</defs>${paths}<text class="center-title" x="${cx}" y="148" text-anchor="middle">${stage}</text><text class="center-sub" x="${cx}" y="171" text-anchor="middle">${step}</text>${packets}${nodes}</svg>`;
-  $('ring-direction').textContent=Array.from({length:n+1},(_,r)=>r%n).map(r=>'GPU '+r).join(' → ');
- }
- function story(e){
-  const incoming=e.transfers.find(t=>t.to===rank),outgoing=e.transfers.find(t=>t.from===rank),last=pos===events.length-1;
-  let title,en,text,math,trace='';
-  if(e.phase==='init'){
-   title='初始化：各 GPU 有自己的数据';en='Initialize · distinct local inputs';text=`GPU ${rank} 把本地向量等分为 ${n} 块。相同编号的块表示相同位置，接下来只对齐相同位置做逐元素 SUM。`;
-   math=`<div class="label">GPU ${rank} 的初始输入 Local input</div>${vector(e.buffers[rank].flatMap(b=>b.values))}`;
-  }else{
-   const t=incoming,c=t.chunk,b=e.buffers[rank][c];
-   trace=`<span>发送 Send</span><b>C${outgoing.chunk} → GPU ${outgoing.to}</b><span>接收 Receive</span><b>GPU ${t.from} → C${c}</b>`;
-   if(e.kind==='send'){
-    title=`第 ${e.round+1} 轮：并行传输`;en=(e.phase==='rs'?'Reduce-Scatter':'All-Gather')+' · send / receive';
-    text=`所有 GPU 同时把一个块发给下一节点。GPU ${rank} 发出 C${outgoing.chunk}，并接收 GPU ${t.from} 的 C${c}；此时本地缓冲区显示接收前的状态。`;
-    math=`<div class="label">即将收到 Incoming C${c}</div>${vector(t.payload.values)}<br><div class="label">来自 GPU ${t.payload.sources.join(', ')} 的贡献 · ${t.payload.sources.length}/${n}</div>`;
-   }else if(e.phase==='rs'){
-    title=e.round===n-2?'Reduce-Scatter 完成：每 GPU 一个完整块':`第 ${e.round+1} 轮：接收并相加`;en=e.round===n-2?'Reduce-Scatter complete · one reduced chunk per GPU':'Receive and accumulate · elementwise SUM';
-    text=`GPU ${rank} 把收到的 C${c} 与自己的 C${c} 逐元素相加。现在这个块包含 ${b.sources.length} 个 GPU 的贡献${b.sources.length===n?'，已得到全局求和结果。':'，下一轮继续沿环转发。'}`;
-    math=`<div class="label">本地 Local ＋ 收到 Received → 更新 Updated C${c}</div>${vector(t.before.values)}<br>+ ${vector(t.payload.values)}<br>= ${vector(b.values)}`;
-   }else{
-    title=last?'AllReduce 完成：每 GPU 得到相同的 SUM':`第 ${e.round+1} 轮：接收并复制`;en=last?'AllReduce complete · identical sums on all GPUs':'Receive and copy · no additional reduction';
-    text=`收到的 C${c} 已经是完整求和结果，直接覆盖 GPU ${rank} 对应的本地块。${last?'现在所有 GPU 都拥有相同的完整向量。':'下一轮转发刚收到的完整块。'}`;
-    math=`<div class="label">复制完整结果 Copy C${c} · 不再次相加</div>C${c} ← ${vector(t.payload.values)}<br><div class="label">原缓冲区 ${vector(t.before.values)} 被覆盖</div>`;
+  for(let r=0;r<4;r++){
+   const node=svgEl('g',{'data-gpu':r});node.innerHTML=`<rect class="gpu-shell" x="${nodes[r].x}" y="${nodes[r].y}" width="${cw}" height="${ch}" rx="12"/><text class="gpu-heading" x="${nodes[r].x+16}" y="${nodes[r].y+29}">GPU ${r}</text><text class="gpu-hint" id="gpu-count-${r}" x="${nodes[r].x+cw-16}" y="${nodes[r].y+29}" text-anchor="end"></text>`;svg.appendChild(node);slots[r]=[];
+   for(let c=0;c<4;c++){
+    const p=center(r,c),empty=svgEl('g',{class:'tile-empty',transform:`translate(${p.x},${p.y})`});empty.innerHTML=`<rect x="-${tw/2}" y="-${th/2}" width="${tw}" height="${th}" rx="6"/><text class="empty-id" x="-${tw/2-12}" y="5">C${c}</text><text class="empty-note" x="90" y="4" text-anchor="end">已转交</text>`;node.appendChild(empty);
+    const block=svgEl('g',{'data-block':`${r}-${c}`,transform:`translate(${p.x},${p.y})`});block.innerHTML=tileMarkup(c,`${r}-${c}`);node.appendChild(block);
+    const sign=svgEl('text',{class:'merge-sign',x:p.x+tw/2+7,y:p.y+8,opacity:0});sign.style.fill=`var(--c${c})`;sign.textContent='+';node.appendChild(sign);
+    slots[r][c]={block,empty,sign,point:p,fill:block.querySelector('.tile-fill'),count:block.querySelector('[data-count]'),chips:[...block.querySelectorAll('.source-chip')],note:empty.querySelector('.empty-note')};
    }
   }
-  $('story-title').textContent=title;$('story-en').textContent=en;$('story-text').textContent=text;$('arithmetic').innerHTML=math;$('trace').innerHTML=trace;
-  const active=e.phase==='init'?[0]:last?[8,9]:e.phase==='rs'?(e.kind==='send'?[1,2,3]:[4]):e.kind==='send'?[5,6,7]:[8];
-  document.querySelectorAll('.code-line').forEach(el=>el.classList.toggle('active',active.includes(Number(el.dataset.line))));
-  $('context').innerHTML=`观察 <strong>GPU ${rank}</strong> · prev = ${(rank+n-1)%n} · next = ${(rank+1)%n}<br>每块 2 × float32 = <strong>8 B</strong>`;
+  const central=svgEl('g',{id:'center-label'});central.innerHTML='<text id="center-title" class="center-title" x="600" y="262" text-anchor="middle"></text><text id="center-step" class="center-step" x="600" y="291" text-anchor="middle"></text><line class="center-line" x1="491" x2="709" y1="306" y2="306"/><text id="center-action" class="center-action" x="600" y="330" text-anchor="middle"></text><text id="center-note" class="center-note" x="600" y="354" text-anchor="middle"></text>';svg.appendChild(central);
+  const packets=svgEl('g',{'aria-hidden':'true',id:'packets'});svg.appendChild(packets);
+  for(let r=0;r<4;r++){const group=svgEl('g',{'data-packet':r,filter:'url(#packet-shadow)',opacity:0});packets.appendChild(group);packetGroups.push(group);}
+  $('board-wrap').replaceChildren(svg);
  }
- function render(){
-  const e=events[pos],last=pos===events.length-1;legend();bufferView(e);ringView(e);story(e);
-  $('position').value=pos;$('position-label').value=`${pos} / ${events.length-1}`;$('back').disabled=pos===0;$('next').disabled=last;$('next-round').disabled=last;
-  $('phase-rs').setAttribute('aria-current',e.phase!=='ag'?'step':'false');$('phase-ag').setAttribute('aria-current',e.phase==='ag'?'step':'false');
-  $('round-count').innerHTML=`${e.completed}<small>/ ${2*(n-1)}</small>`;$('sent-count').innerHTML=`${e.sent}<small>/ ${16*(n-1)} B</small>`;$('sent-foot').textContent=`已接收 ${e.completed*8} B · 输入 S = ${8*n} B`;
-  const count=e.buffers[rank].filter(b=>b.sources.length===n).length;$('final-count').innerHTML=`${count}<small>/ ${n}</small>`;$('final-foot').textContent=`观察 GPU ${rank} · 每 GPU 发送总量 ${(2*(n-1)/n).toFixed(2)}S`;
-  $('result-note').hidden=!last;if(last)$('result-note').textContent=`✓ 所有 GPU 的 SUM = ${vector(RingEngine.reference(n).flat())}。每 GPU 发送 ${16*(n-1)} B、接收 ${16*(n-1)} B。若需均值，再将结果除以 ${n}。`;
-  if(timer===null){$('play').textContent=last?'↺ 重播 Replay':'▶ 播放 Play';$('play').setAttribute('aria-pressed','false');}
+ function populateTile(group,data,c){
+  const chips=[...group.querySelectorAll('.source-chip')];for(let r=0;r<4;r++)chips[r].setAttribute('opacity',data.sources.includes(r)?1:.12);
+  group.querySelector('[data-count]').textContent=data.sources.length===4?'Σ':data.sources.length+'/4';
  }
- $('play').addEventListener('click',play);$('back').addEventListener('click',()=>{stop();seek(pos-1);});$('next').addEventListener('click',()=>{stop();seek(pos+1);});$('next-round').addEventListener('click',()=>{stop();seek(pos+1+(pos%2===0?1:0));});$('reset').addEventListener('click',()=>{stop();seek(0);});$('result').addEventListener('click',()=>{stop();seek(events.length-1);});$('position').addEventListener('input',e=>{stop();seek(e.target.value);});$('ranks').addEventListener('change',e=>{n=Number(e.target.value);reset();});$('rank-focus').addEventListener('change',e=>{rank=Number(e.target.value);render();});$('speed').addEventListener('change',()=>{if(timer!==null){clearTimeout(timer);schedule();}ringView(events[pos]);});
- $('phase-rs').addEventListener('click',()=>{stop();seek(0);});$('phase-ag').addEventListener('click',()=>{stop();seek(2*(n-1)+1);});
- $('chunk-legend').addEventListener('click',e=>{const b=e.target.closest('[data-chunk]');if(b){focus=Number(b.dataset.chunk);render();}});
- function selectRank(e){const el=e.target.closest('[data-rank]');if(el){rank=Number(el.dataset.rank);$('rank-focus').value=String(rank);render();}}
- $('ring').addEventListener('click',selectRank);$('buffers').addEventListener('click',selectRank);$('ring').addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)&&e.target.closest('[data-rank]')){e.preventDefault();selectRank(e);}});
- document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
- window.RingLab={seek,pause:stop,setRanks(value){n=Number(value);$('ranks').value=String(n);reset();},get position(){return pos;},get events(){return events;},get state(){return events[pos];},get ranks(){return n;}};
- reset();
+ function geometry(round){
+  round.transfers.forEach((t,r)=>{
+   const a=center(t.from,t.chunk),b=center(t.to,t.chunk);let d;
+   if(r===0)d=`M ${a.x} ${a.y} C 420 ${a.y} 780 ${b.y} ${b.x} ${b.y}`;
+   if(r===1)d=`M ${a.x} ${a.y} C 780 ${a.y} 780 ${b.y} ${b.x} ${b.y}`;
+   if(r===2)d=`M ${a.x} ${a.y} C 780 ${a.y} 420 ${b.y} ${b.x} ${b.y}`;
+   if(r===3)d=`M ${a.x} ${a.y} C 420 ${a.y} 420 ${b.y} ${b.x} ${b.y}`;
+   paths[r].path.setAttribute('d',d);paths[r].path.style.stroke=`var(--c${t.chunk})`;
+   const length=paths[r].path.getTotalLength(),mid=paths[r].path.getPointAtLength(length*.5),a0=paths[r].path.getPointAtLength(length*.5-2),a1=paths[r].path.getPointAtLength(length*.5+2),angle=Math.atan2(a1.y-a0.y,a1.x-a0.x)*180/Math.PI;
+   paths[r].length=length;paths[r].arrow.setAttribute('transform',`translate(${mid.x},${mid.y}) rotate(${angle})`);paths[r].arrow.style.fill=`var(--c${t.chunk})`;
+   packetGroups[r].innerHTML=tileMarkup(t.chunk,'packet-'+r);populateTile(packetGroups[r],t.payload,t.chunk);
+  });
+ }
+ let geometryIndex=-1;
+ function paint(){
+  const done=time>=6,index=done?5:Math.floor(time),p=done?1:time-index,round=model.rounds[index],arrived=p>=.80,launch=p>=.14&&p<.80,phase=round.phase;
+  if(geometryIndex!==index){geometry(round);geometryIndex=index;}
+  const data=arrived?round.after:round.before;
+  for(let r=0;r<4;r++){
+   const outgoing=round.transfers[r];let count=0;
+   for(let c=0;c<4;c++){
+    const slot=slots[r][c],block=data[r][c],sent=phase==='rs'&&outgoing.chunk===c&&launch,visible=!!block&&!sent,tracked=focus<0||focus===c,receiving=round.transfers.find(t=>t.to===r&&t.chunk===c),merging=receiving&&p>=.72&&p<.94;
+    let opacity=visible?(tracked?1:.28):0;
+    if(phase==='rs'&&outgoing.chunk===c&&p>=.10&&p<.14)opacity*=1-clamp((p-.10)/.04);
+    slot.block.setAttribute('opacity',opacity);slot.empty.setAttribute('opacity',visible?0:.8);slot.note.textContent=phase==='rs'?'已转交':'等待副本';
+    if(block){populateTile(slot.block,block,c);slot.block.setAttribute('aria-label',`GPU ${r} 的 C${c}，包含 GPU ${block.sources.join(', ')} 的贡献`);}
+    if(visible)count++;
+    const pulse=merging&&arrived?1+.065*Math.sin(Math.PI*clamp((p-.80)/.14)):1;
+    slot.block.setAttribute('transform',`translate(${slot.point.x},${slot.point.y}) scale(${pulse})`);
+    slot.sign.textContent=phase==='rs'?'+':'↓';slot.sign.setAttribute('opacity',merging?Math.sin(Math.PI*clamp((p-.72)/.22))*(tracked?1:.3):0);
+   }
+   $('gpu-count-'+r).textContent=`${count} 个有效块`;
+  }
+  round.transfers.forEach((t,r)=>{
+   let q=clamp((p-.10)/.62),opacity=p<.10||p>.84?0:Math.min(clamp((p-.10)/.04),1-clamp((p-.74)/.10));
+   const path=paths[r],tracked=focus<0||focus===t.chunk;path.path.setAttribute('opacity',tracked ? .55 : .13);path.arrow.setAttribute('opacity',tracked ? .75 : .15);
+   if(matchMedia('(prefers-reduced-motion: reduce)').matches)q=q<.5?0:1;
+   const point=path.path.getPointAtLength(path.length*q),scale=1-.34*Math.sin(Math.PI*q);
+   packetGroups[r].setAttribute('transform',`translate(${point.x},${point.y}) scale(${scale})`);packetGroups[r].setAttribute('opacity',opacity*(tracked?1:.28));
+  });
+  const action=p<.10?'prepare':p<.72?'travel':p<.90?'merge':'hold';
+  let title=phase==='rs'?'Reduce-Scatter':'All-Gather',step=`第 ${round.step+1} / 3 轮`,main=phase==='rs'?(action==='travel'?'同色块正在转交':action==='merge'?'收到的块与本地块合并':'每 GPU 的有效块逐轮减少'):(action==='travel'?'完整结果正在复制':action==='merge'?'副本填入接收节点':'发送节点保留原结果'),note=phase==='rs'?'4 → 3 → 2 → 1 块 / GPU':'1 → 2 → 3 → 4 块 / GPU';
+  if(time===0){step='初始：每 GPU 4 个块';main='不同 GPU 有自己的贡献';note='点击播放，跟随同色数据块';}
+  if(done){title='AllReduce 完成';step='所有 GPU 持有相同结果';main='每个同色块均包含 0 + 1 + 2 + 3';note='Σ 表示该块的完整求和结果';}
+  $('center-title').textContent=title;$('center-step').textContent=step;$('center-action').textContent=main;$('center-note').textContent=note;
+  const key=index+':'+action+':'+done;
+  if(key!==lastAnnouncement){
+   $('caption-text').textContent=done?'所有 GPU 都得到 4 个完整结果块。':phase==='rs'?'转交块离开发送节点，抵达后与同色块合并。':'完整求和块保留在发送节点，副本进入接收节点。';
+   $('caption-en').textContent=done?'All GPUs now hold all four reduced chunks.':phase==='rs'?'Move the partial chunk, then merge contributions.':'Keep the original result and send a copy.';lastAnnouncement=key;
+  }
+  document.querySelectorAll('[data-stage]').forEach(el=>el.classList.toggle('active',!done&&el.dataset.stage===action));
+  $('position').value=time.toFixed(3);$('position-label').value=`${Math.min(6,Math.floor(time))} / 6 轮`;
+  $('phase-rs').setAttribute('aria-current',phase==='rs'?'step':'false');$('phase-ag').setAttribute('aria-current',phase==='ag'?'step':'false');
+  $('back').disabled=time<=0;$('next').disabled=done;$('play').textContent=playing?'Ⅱ 暂停 Pause':done?'↺ 重播 Replay':'▶ 播放 Play';$('play').setAttribute('aria-pressed',String(playing));
+ }
+ function pause(){playing=false;if(raf!==null)cancelAnimationFrame(raf);raf=null;lastStamp=null;paint();}
+ function seek(value){pause();time=clamp(Number(value),0,6);paint();}
+ function tick(stamp){if(!playing)return;if(lastStamp!==null)time=Math.min(stopAt,time+Math.min(100,stamp-lastStamp)/Number($('speed').value));lastStamp=stamp;if(time>=stopAt){time=stopAt;playing=false;raf=null;lastStamp=null;}paint();if(playing)raf=requestAnimationFrame(tick);}
+ function start(target=6){if(time>=6)time=0;stopAt=target;playing=true;lastStamp=null;paint();raf=requestAnimationFrame(tick);}
+ $('play').addEventListener('click',()=>{if(playing)pause();else start();});$('next').addEventListener('click',()=>{pause();start(Math.min(6,Math.floor(time+1e-6)+1));});$('back').addEventListener('click',()=>seek(Math.max(0,Math.ceil(time-1e-6)-1)));$('reset').addEventListener('click',()=>seek(0));$('result').addEventListener('click',()=>seek(6));$('position').addEventListener('input',e=>seek(e.target.value));$('phase-rs').addEventListener('click',()=>seek(0));$('phase-ag').addEventListener('click',()=>seek(3));
+ document.querySelector('.legend').addEventListener('click',e=>{const b=e.target.closest('[data-chunk]');if(!b)return;focus=Number(b.dataset.chunk);document.querySelectorAll('[data-chunk]').forEach(el=>el.setAttribute('aria-pressed',String(Number(el.dataset.chunk)===focus)));paint();});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+ window.RingFlowLab={seek,pause,play:()=>start(),get time(){return time;},get playing(){return playing;},get model(){return model;}};
+ mount();paint();
 })();
 </script>
 </body>

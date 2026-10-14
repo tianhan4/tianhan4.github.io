@@ -23,9 +23,9 @@
 </div>
 <p class="course-subtitle">Chapter 6 · Distributed Training and Communication Optimization</p>
 <div class="resource-list">
-<article class="resource" aria-labelledby="allreduce-title"><div class="resource-heading"><span class="resource-number">03</span><div><p class="resource-type">Interactive demo · Collective communication</p><h3 id="allreduce-title"><a href="demos/ring-allreduce.html">Ring AllReduce: Reduce-Scatter and All-Gather Step by Step</a></h3></div></div>
-<p>Follow parallel chunk transfers around a logical GPU ring. Inspect local buffers and contribution tracking as Reduce-Scatter accumulates partial sums and All-Gather copies the complete results to every GPU.</p>
-<ul class="topics"><li>Parallel send and receive</li><li>Chunk accumulation and replication</li><li>Communication volume</li></ul>
+<article class="resource" aria-labelledby="allreduce-title"><div class="resource-heading"><span class="resource-number">03</span><div><p class="resource-type">Interactive demo · Collective communication</p><h3 id="allreduce-title"><a href="demos/ring-allreduce.html">Ring AllReduce: Watch Chunks Move, Merge, and Replicate</a></h3></div></div>
+<p>Watch chunks move directly between four GPU nodes in a continuous animation. Reduce-Scatter transfers and merges chunks until each GPU holds one reduced chunk; All-Gather keeps the originals and distributes copies. Pause at any moment or play one complete round.</p>
+<ul class="topics"><li>Continuous chunk movement</li><li>Per-GPU chunk inventory</li><li>Merge versus copy</li></ul>
 <div class="resource-actions"><a class="open-demo" href="demos/ring-allreduce.html">Open demo →</a></div></article>
 </div></section></main>
 <div id="footer"><div id="footer-text"><a href="../index.html">Han Tian · Home</a></div></div></td></tr></table>
