@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Continuous pipeline parallelism animation: microbatch activations move forward, gradients return backward, and GPipe and synchronous 1F1B schedules reveal bubbles and retained activations.">
+<title>Pipeline Parallelism · 流水线并行动画</title>
+<style>
+:root{color-scheme:light;--bg:#f5f4f8;--paper:#fff;--ink:#282437;--muted:#706a80;--line:#e1dce9;--purple:#6540a4;--soft:#eee8f8;--c0:#2979b5;--c1:#148578;--c2:#b17a20;--c3:#8a54b4;--c4:#b14e77;--c5:#638337;--c6:#4b66b6;--c7:#a46b40;--t0:#e6f2fa;--t1:#e4f4ef;--t2:#fcf2dc;--t3:#f0e8f9;--t4:#f9e7ef;--t5:#eef4df;--t6:#e8edfb;--t7:#f6ebdf;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}a{color:var(--purple)}button,select,input{font:inherit}button{border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);padding:7px 12px;min-height:36px;cursor:pointer}button:hover:not(:disabled){background:var(--soft)}button:disabled{opacity:.4;cursor:default}button.primary{background:var(--purple);color:#fff;border-color:var(--purple)}button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #a17cdb;outline-offset:3px}select{border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);padding:6px 8px}.shell{max-width:1390px;margin:auto;padding:16px 26px 26px}.course-nav{font-size:12px;margin-bottom:13px}.course-nav a{text-decoration:none}header{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:13px}h1{margin:0;font-size:26px;font-weight:650;letter-spacing:-.025em}.heading-en{font-size:13px;color:var(--muted)}.method-row{display:flex;gap:9px;align-items:stretch;margin-bottom:11px}.method{flex:1;text-align:left;padding:9px 13px;display:flex;align-items:center;gap:10px}.method strong{font-size:14px;font-weight:600}.method span{font-size:12px;color:var(--muted)}.method[aria-pressed=true]{background:var(--soft);border-color:#bca4dc}.method-row label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);padding:0 2px 0 8px}.controls{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 13px 9px;margin-bottom:11px}.toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.toolbar label{display:flex;align-items:center;gap:7px;margin-left:auto;color:var(--muted);font-size:12px}.timeline-control{display:flex;gap:9px;align-items:center;font-size:12px;color:var(--muted);margin-top:9px}.timeline-control input{flex:1;accent-color:var(--purple);min-width:80px}.timeline-control output{font-variant-numeric:tabular-nums;min-width:83px;text-align:right}.legend{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin:0 2px 10px;flex-wrap:wrap}.legend .note{margin-left:auto}.legend i{display:inline-block;width:18px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px;background:#c9badf}.legend i.backward{background:repeating-linear-gradient(135deg,#c9badf,#c9badf 3px,#f9f6fc 3px,#f9f6fc 6px)}.legend i.idle{background:#f0edf5;border:1px dashed #cbc3d8}.stage{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}.board-wrap{overflow:hidden}.board{width:100%;height:auto;display:block}.board text{font-family:Inter,"PingFang SC",system-ui,sans-serif;fill:var(--ink)}.gpu-shell{fill:#faf9fc;stroke:var(--line);stroke-width:1.5}.gpu-title{font-size:17px;font-weight:600}.gpu-weight{font-size:12px;fill:var(--purple)!important}.model-label{font-size:11px;fill:var(--muted)!important}.op-empty{fill:#f2eff7;stroke:#dad3e5;stroke-dasharray:5 4}.op-idle{font-size:15px;fill:#8d849c!important}.op-idle-small{font-size:11px;fill:#9c94a7!important}.op-type{font-size:14px;font-weight:550}.op-micro{font-size:25px;font-weight:600}.op-stage{font-size:11px;fill:var(--muted)!important}.queue-label{font-size:11px;fill:var(--muted)!important}.queue-chip-label{font-size:10px}.queue-empty{fill:#f2eff7;stroke:#e0dbe9;stroke-dasharray:2 3}.packet-label{font-size:13px;font-weight:600}.step-title{font-size:13px;font-weight:550}.axis-text{font-size:10px;fill:var(--muted)!important}.gantt-label{font-size:12px;font-weight:550}.gantt-cell-text{font-size:11px;font-weight:550}.row-idle{fill:#f5f3f8;stroke:#eeeaf3;stroke-width:1}.caption{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:10px 15px;border-top:1px solid var(--line);font-size:13px}.caption .en{font-size:12px;color:var(--muted);margin-left:6px}.caption .status{color:var(--purple);font-size:12px}.footnote{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7}.footnote summary{cursor:pointer}.footnote p{margin:8px 0 0}.footer{font-size:11px;color:var(--muted);margin-top:8px}.footer a{margin-right:14px}
+@media(max-width:760px){.shell{padding:12px 10px 22px}h1{font-size:21px}header{gap:3px}.heading-en{font-size:12px}.method-row{flex-wrap:wrap}.method{min-width:45%;display:block}.method span{display:block;font-size:11px;margin-top:3px}.method-row label{padding:0}.toolbar button{font-size:12px;padding:7px 9px}.toolbar label{margin-left:0}.legend{font-size:11px;gap:8px}.legend .note{margin-left:0;width:100%}.board-wrap{overflow-x:auto}.board{min-width:1050px}.caption .en{display:block;margin:3px 0 0}.timeline-control{font-size:11px}}
+</style>
+</head>
+<body>
+<main class="shell">
+<nav class="course-nav" aria-label="Course navigation"><a href="https://tianhan4.github.io/courses/">← Courses · Software Optimization for Intelligent Computing</a></nav>
+<header><h1>Pipeline Parallelism · 流水线并行</h1><div class="heading-en" lang="en">Micro-batches across 4 GPU stages</div></header>
+<div class="method-row" role="group" aria-label="调度方式 Pipeline schedule"><button type="button" class="method" data-mode="gpipe" aria-pressed="true"><strong>GPipe</strong><span>先完成所有前向，再做反向</span></button><button type="button" class="method" data-mode="1f1b" aria-pressed="false"><strong>同步 1F1B</strong><span>预热后，交替前向与反向 · Flush</span></button><label for="micro-count">Micro-batches <select id="micro-count"><option value="4">4</option><option value="8" selected>8</option></select></label></div>
+<section class="controls" aria-label="动画控制 Animation controls"><div class="toolbar"><button type="button" id="play" class="primary" aria-pressed="false">▶ 播放 Play</button><button type="button" id="back">← 上一步 Back</button><button type="button" id="next">播放一步 One step →</button><button type="button" id="reset">↺ 回到开始 Reset</button><button type="button" id="result">最终结果 Result</button><label for="speed">速度 Speed <select id="speed"><option value="4300">慢速 Slow</option><option value="2900" selected>标准 Normal</option><option value="1600">快速 Fast</option></select></label></div><div class="timeline-control"><label for="position">过程 Progress</label><input type="range" id="position" min="0" max="23" step="0.001" value="0"><output id="position-label" for="position"></output></div></section>
+<div class="legend"><span><i></i>F：前向 → 激活</span><span><i class="backward"></i>B：反向 ← 梯度</span><span><i class="idle"></i>等待 / Bubble</span><span class="note">同色＝同一个 micro-batch · μ 编号贯穿前向与反向</span></div>
+<section class="stage" aria-label="流水线运行动画 Pipeline execution animation"><div class="board-wrap" id="board-wrap"></div><div class="caption" aria-live="polite"><div><span id="caption-text"></span><span class="en" id="caption-en" lang="en"></span></div><span class="status" id="status"></span></div></section>
+<details class="footnote"><summary>演示口径 · Balanced stages / synchronous update</summary><p>每个 GPU 保存模型的一段，各段计算时长相同；F、B 各占一格。通信在每格末尾动画展开，不另增加时间格，横轴表示调度顺序而非实测时间。小块展示激活记录的数量，不代表显存字节数；未展示重计算与数据并行同步。同步 1F1B 在稳态交替前后向，以更早释放激活；本例与 GPipe 的理想总时长相同。两种调度均等整个 mini-batch 完成后才更新权重。小屏幕可横向滑动查看。</p></details>
+<footer class="footer">Han Tian · Chapter 6 · <a href="https://arxiv.org/html/1811.06965v5" target="_blank" rel="noopener">GPipe</a><a href="https://arxiv.org/html/2104.04473v5" target="_blank" rel="noopener">Megatron-LM / synchronous 1F1B</a></footer>
+</main>
+<script>
+const PipelineEngine=(()=>{
+ function build(M=8,mode='gpipe'){
+  if(![4,8].includes(M)||!['gpipe','1f1b'].includes(mode))throw new Error('Invalid configuration');
+  const K=4,queues=Array.from({length:K},(_,s)=>{
+   const q=[];if(mode==='gpipe'){for(let m=0;m<M;m++)q.push({kind:'F',m});for(let m=0;m<M;m++)q.push({kind:'B',m});}
+   else{const warm=Math.min(M,K-s-1);for(let m=0;m<warm;m++)q.push({kind:'F',m});for(let m=0;m<M-warm;m++){q.push({kind:'F',m:m+warm});q.push({kind:'B',m});}for(let m=M-warm;m<M;m++)q.push({kind:'B',m});}
+   return q;
+  });
+  const done=new Map(),index=Array(K).fill(0),rows=Array.from({length:K},()=>[]),slots=[],tasks=[];let clock=0;
+  while(index.some((v,s)=>v<queues[s].length)){
+   if(clock>200)throw new Error('Deadlock');const current=Array(K).fill(null),pending=[];
+   for(let s=0;s<K;s++){
+    const a=queues[s][index[s]];if(!a)continue;const key=(stage,kind)=>`${stage}-${kind}-${a.m}`;
+    const dependency=a.kind==='F'?(s===0?null:key(s-1,'F')):(s===K-1?key(s,'F'):key(s+1,'B'));
+    if(dependency&&!done.has(dependency))continue;
+    if(a.kind==='B'&&!done.has(key(s,'F')))throw new Error('Missing activation');
+    const task={s,...a,t:clock};current[s]=task;pending.push(task);rows[s].push(task);tasks.push(task);index[s]++;
+   }
+   for(const a of pending)done.set(`${a.s}-${a.kind}-${a.m}`,clock+1);
+   slots.push(current);clock++;
+  }
+  const starts=Array.from({length:K},()=>({F:Array(M).fill(-1),B:Array(M).fill(-1)}));for(const t of tasks)starts[t.s][t.kind][t.m]=t.t;
+  return {M,mode,K,slots,rows,tasks,starts,duration:clock,end:clock+1};
+ }
+ function state(model,time){
+  const {M,starts,duration}=model,slot=Math.min(Math.floor(time),duration),p=time-Math.floor(time),current=model.slots[slot]||Array(4).fill(null),cacheAt=t=>t+.61,arriveAt=t=>t+.91;
+  const doneF=(s,m)=>time>=cacheAt(starts[s].F[m]),doneB=(s,m)=>time>=cacheAt(starts[s].B[m]);
+  const stages=Array.from({length:4},(_,s)=>{
+   const task=current[s],activation=[],input=[],gradient=[];let accumulated=0;
+   for(let m=0;m<M;m++){
+    if(doneF(s,m)&&!doneB(s,m))activation.push(m);
+    const entered=time>=starts[s].F[m]+.03;
+    if(!entered&&(s===0||time>=arriveAt(starts[s-1].F[m])))input.push(m);
+    const gradReady=s===3?time>=arriveAt(starts[s].F[m]):time>=arriveAt(starts[s+1].B[m]);
+    if(gradReady&&time<starts[s].B[m]+.03)gradient.push(m);
+    if(time>=arriveAt(starts[s].B[m]))accumulated++;
+   }
+   return {task,activation,input,gradient,accumulated,weight:time>=duration+.65?1:0};
+  });
+  return {slot,p,current,stages,updating:time>=duration&&time<duration+1,finished:time>=duration+1};
+ }
+ return {build,state};
+})();
+window.PipelineEngine=PipelineEngine;
+(()=>{
+ const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+ const nodes=Array.from({length:4},(_,r)=>({x:32+320*r,y:118})),cw=248,op={y:218,w:216,h:64};
+ let mode='gpipe',M=8,model,time=0,playing=false,raf=null,lastStamp=null,stopAt=0,svg,stages=[],flight=[],local=[],inputTiles=[],ganttCells=[],playhead,oldSlot=-1,oldCaption='';
+ const svgEl=(tag,attrs={})=>{const el=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))el.setAttribute(k,String(v));return el;};
+ const color=m=>`var(--c${m})`,tint=m=>`var(--t${m})`,point=(s,row,m)=>({x:nodes[s].x+27+m*27.5,y:row==='input'?302:row==='cache'?360:418}),operation=s=>({x:nodes[s].x+cw/2,y:op.y});
+ function miniMarkup(m,w=22,h=22,kind=''){return `<rect class="chip-fill" x="-${w/2}" y="-${h/2}" width="${w}" height="${h}" rx="4" fill="${tint(m)}" stroke="${color(m)}" stroke-opacity=".35"/><text class="queue-chip-label" text-anchor="middle" y="4" style="fill:${color(m)}">${kind}μ${m+1}</text>`;}
+ function packetMarkup(m,kind){return `<rect x="-43" y="-15" width="86" height="30" rx="6" fill="${tint(m)}" stroke="${color(m)}" stroke-opacity=".65"/>${kind==='B'||kind==='W'?'<rect x="-43" y="-15" width="86" height="30" rx="6" fill="url(#backward-hatch)"/>':''}<text class="packet-label" text-anchor="middle" y="5" style="fill:${color(m)}">μ${m+1} · ${kind==='F'?'A →':kind==='B'?'← dA':kind==='L'?'Loss':'ΣdW'}</text>`;}
+ function mount(){
+  stages=[];flight=[];local=[];inputTiles=[];ganttCells=[];oldSlot=-1;oldCaption='';
+  svg=svgEl('svg',{class:'board',viewBox:'0 0 1280 735',role:'img','aria-label':'四个 GPU 分别保存模型的一段。micro-batch 激活从左向右流转，梯度从右向左返回。下方同步显示逐 GPU 调度。'});
+  svg.innerHTML='<title>Pipeline Parallelism 连续数据流动画</title><defs><pattern id="backward-hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(35)"><rect width="2" height="7" fill="white" opacity=".55"/></pattern></defs>';
+  const batch=svgEl('g');batch.innerHTML=`<text class="step-title" x="32" y="38">一个 mini-batch → ${M} 个 micro-batches</text><text class="axis-text" x="1240" y="38" text-anchor="end">颜色跟随 μ 编号，不代表模型分片</text>`;svg.appendChild(batch);
+  for(let m=0;m<M;m++){
+   const tile=svgEl('g',{id:'batch-'+m,transform:`translate(${67+m*69},75)`});tile.innerHTML=miniMarkup(m,56,29);batch.appendChild(tile);inputTiles.push(tile);
+  }
+  const phase=svgEl('text',{id:'global-phase',class:'step-title',x:1240,y:80,'text-anchor':'end'});svg.appendChild(phase);
+  for(let s=0;s<4;s++){
+   const node=svgEl('g',{'data-gpu':s}),x=nodes[s].x;
+   node.innerHTML=`<rect class="gpu-shell" x="${x}" y="118" width="248" height="337" rx="12"/><text class="gpu-title" x="${x+16}" y="147">GPU ${s}</text><text class="gpu-weight" id="weight-${s}" x="${x+232}" y="147" text-anchor="end">Wᵗ</text><text class="model-label" x="${x+16}" y="171">Stage ${s+1} / 4 · 模型分片 S${s+1}</text><rect class="op-empty" x="${x+16}" y="186" width="216" height="64" rx="8"/><text class="op-idle" id="idle-${s}" x="${x+124}" y="213" text-anchor="middle">等待输入</text><text class="op-idle-small" id="idle-detail-${s}" x="${x+124}" y="234" text-anchor="middle">Bubble</text><text class="queue-label" id="input-label-${s}" x="${x+16}" y="279"></text><text class="queue-label" id="cache-label-${s}" x="${x+16}" y="337"></text><text class="queue-label" id="gradient-label-${s}" x="${x+16}" y="395"></text>`;
+   svg.appendChild(node);const entry={node,queues:{},op:svgEl('g',{'data-operation':s}),progress:null};
+   for(const row of ['input','cache','gradient']){
+    entry.queues[row]=[];
+    for(let m=0;m<M;m++){
+     const p=point(s,row,m),base=svgEl('rect',{class:'queue-empty',x:p.x-11,y:p.y-11,width:22,height:22,rx:4});node.appendChild(base);
+     const chip=svgEl('g',{'data-token':`${s}-${row}-${m}`,transform:`translate(${p.x},${p.y})`});chip.innerHTML=miniMarkup(m);node.appendChild(chip);entry.queues[row].push(chip);
+    }
+   }
+   const accumulated=svgEl('text',{id:'accumulated-'+s,class:'axis-text',x:x+232,y:445,'text-anchor':'end'});node.appendChild(accumulated);stages.push(entry);
+  }
+  const activeLayer=svgEl('g',{id:'operation-layer'}),travelLayer=svgEl('g',{id:'travel-layer','aria-hidden':'true'});svg.append(activeLayer,travelLayer);
+  for(let s=0;s<4;s++){
+   activeLayer.appendChild(stages[s].op);
+   const group=svgEl('g',{'data-flight':s,opacity:0}),path=svgEl('path',{fill:'none','stroke-width':1.5,'stroke-opacity':.26});travelLayer.append(path,group);flight.push({group,path,length:0});
+  }
+  const gantt=svgEl('g');gantt.innerHTML='<text class="step-title" x="32" y="492">调度时间线 · 同一列中的 GPU 同时执行</text><text class="axis-text" x="1240" y="492" text-anchor="end">浅灰＝等待 · F / B 后的数字＝μ 编号</text>';svg.appendChild(gantt);
+  const gx=113,gy=526,gw=1126,cellW=gw/model.end,rowH=36;
+  for(let t=0;t<model.end;t++){
+   const text=svgEl('text',{class:'axis-text',x:gx+(t+.5)*cellW,y:514,'text-anchor':'middle'});text.textContent=t===model.duration?'更新':t+1;gantt.appendChild(text);
+  }
+  for(let s=0;s<4;s++){
+   const label=svgEl('text',{class:'gantt-label',x:94,y:gy+s*rowH+20,'text-anchor':'end'});label.textContent='GPU '+s;gantt.appendChild(label);ganttCells[s]=[];
+   for(let t=0;t<model.end;t++){
+    const task=model.slots[t]?.[s],x=gx+t*cellW,y=gy+s*rowH,group=svgEl('g',{'data-task':`${s}-${t}`});
+    group.innerHTML=`<rect class="row-idle" x="${x+1}" y="${y}" width="${cellW-2}" height="28" rx="3"/>`;
+    if(task){group.innerHTML+=`<rect x="${x+1}" y="${y}" width="${cellW-2}" height="28" rx="3" fill="${tint(task.m)}"/>${task.kind==='B'?`<rect x="${x+1}" y="${y}" width="${cellW-2}" height="28" rx="3" fill="url(#backward-hatch)"/>`:''}<text class="gantt-cell-text" x="${x+cellW/2}" y="${y+19}" text-anchor="middle" style="fill:${color(task.m)}">${task.kind}${task.m+1}</text>`;}
+    else if(t===model.duration)group.innerHTML+=`<text class="gantt-cell-text" x="${x+cellW/2}" y="${y+19}" text-anchor="middle" style="fill:var(--purple)">U</text>`;
+    gantt.appendChild(group);ganttCells[s].push(group);
+   }
+  }
+  playhead=svgEl('line',{id:'playhead',x1:gx,x2:gx,y1:521,y2:gy+4*rowH-5,stroke:'var(--purple)','stroke-width':2});gantt.appendChild(playhead);
+  const metrics=svgEl('g');metrics.innerHTML='<text class="queue-label" id="memory-summary" x="32" y="702"></text><text class="queue-label" id="update-summary" x="1240" y="702" text-anchor="end"></text>';svg.appendChild(metrics);
+  $('board-wrap').replaceChildren(svg);$('position').max=model.end;
+ }
+ function configureTask(s,task){
+  const group=stages[s].op;if(!task){group.innerHTML='';flight[s].group.innerHTML='';flight[s].path.setAttribute('d','M 0 0');return;}
+  const m=task.m,k=task.kind;
+  group.innerHTML=`<rect x="-108" y="-32" width="216" height="64" rx="8" fill="${tint(m)}" stroke="${color(m)}" stroke-opacity=".45"/>${k==='B'?'<rect x="-108" y="-32" width="216" height="64" rx="8" fill="url(#backward-hatch)"/>':''}<text class="op-micro" x="-91" y="8" style="fill:${color(m)}">μ${m+1}</text><text class="op-type" x="91" y="-2" text-anchor="end" style="fill:${color(m)}">${k==='F'?'F · 前向 →':'← B · 反向'}</text><text class="op-stage" x="91" y="17" text-anchor="end">Stage ${s+1}</text><rect x="-91" y="25" width="182" height="3" rx="1.5" fill="white"/><rect data-compute-progress x="-91" y="25" width="0" height="3" rx="1.5" fill="${color(m)}"/>`;
+  const begin=operation(s),target=k==='F'?(s<3?point(s+1,'input',m):point(s,'gradient',m)):(s>0?point(s-1,'gradient',m):{x:nodes[0].x+170,y:443});
+  let d;
+  if(k==='F'&&s<3){const mid=(begin.x+target.x)/2;d=`M ${begin.x} ${begin.y} C ${mid} ${begin.y} ${mid} ${target.y} ${target.x} ${target.y}`;}
+  else if(k==='B'&&s>0){const mid=(begin.x+target.x)/2;d=`M ${begin.x} ${begin.y} C ${mid} ${begin.y} ${mid} ${target.y} ${target.x} ${target.y}`;}
+  else d=`M ${begin.x} ${begin.y} C ${begin.x+100} ${begin.y+35} ${target.x+50} ${target.y-20} ${target.x} ${target.y}`;
+  flight[s].path.setAttribute('d',d);flight[s].path.style.stroke=color(m);flight[s].length=flight[s].path.getTotalLength();flight[s].group.innerHTML=packetMarkup(m,k==='F'&&s===3?'L':k==='B'&&s===0?'W':k);
+ }
+ function paint(){
+  const state=PipelineEngine.state(model,time),p=state.p,slot=state.slot,atEnd=time>=model.end;
+  if(oldSlot!==slot){for(let s=0;s<4;s++)configureTask(s,state.current[s]);oldSlot=slot;}
+  let cacheTotal=0,activeCount=0;
+  for(let s=0;s<4;s++){
+   const row=state.stages[s],task=row.task;
+   for(const [type,key]of [['input','input'],['cache','activation'],['gradient','gradient']])for(let m=0;m<M;m++)stages[s].queues[type][m].setAttribute('opacity',row[key].includes(m)?1:0);
+   $('input-label-'+s).textContent=(s===0?'待进入的输入':'收到的激活 →')+`  ${row.input.length}`;
+   $('cache-label-'+s).textContent=`保留激活 · 待反向  ${row.activation.length}`;
+   $('gradient-label-'+s).textContent=(s===3?'Loss 返回的梯度':'← 收到的梯度')+`  ${row.gradient.length}`;
+   $('accumulated-'+s).textContent=`已累计梯度 ${row.accumulated} / ${M}`;
+   $('weight-'+s).textContent=row.weight?'Wᵗ⁺¹':'Wᵗ';cacheTotal+=row.activation.length;
+   if(task){
+    activeCount++;const begin=point(s,task.kind==='F'?'input':'gradient',task.m),end=operation(s),q=clamp(p/.15),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const blend=reduced?1:q,x=begin.x+(end.x-begin.x)*blend,y=begin.y+(end.y-begin.y)*blend,scale=.12+.88*blend,opacity=p<.61?1:1-clamp((p-.61)/.10);
+    stages[s].op.setAttribute('transform',`translate(${x},${y}) scale(${scale})`);stages[s].op.setAttribute('opacity',opacity);
+    stages[s].op.querySelector('[data-compute-progress]').setAttribute('width',182*clamp((p-.15)/.46));
+    $('idle-'+s).textContent=task.kind==='F'?(s===3?'计算 Loss / 返回梯度':'发出激活 →'):(s===0?'累计参数梯度':'← 回传梯度');$('idle-detail-'+s).textContent=`μ${task.m+1} · 计算已完成，传递结果`;
+    const travel=clamp((p-.61)/.30),position=flight[s].path.getPointAtLength(flight[s].length*(reduced?(travel<.5?0:1):travel)),alpha=p<.61||p>=.97?0:Math.min(clamp((p-.61)/.05),1-clamp((p-.91)/.06));
+    flight[s].group.setAttribute('transform',`translate(${position.x},${position.y})`);flight[s].group.setAttribute('opacity',alpha);flight[s].path.setAttribute('opacity',p>=.61&&p<.97 ? .6 : 0);
+   }else{
+    stages[s].op.setAttribute('opacity',0);flight[s].group.setAttribute('opacity',0);flight[s].path.setAttribute('opacity',0);
+    const complete=model.rows[s].every(a=>time>=a.t+1);
+    $('idle-'+s).textContent=state.updating?'同步更新权重':atEnd?'本轮完成':complete?'等待流水线排空':s===0?'等待返回梯度':'等待激活 / 梯度';
+    $('idle-detail-'+s).textContent=state.updating?'Optimizer step · 同一 mini-batch':atEnd?'所有 micro-batch 已完成':'Bubble · 本步空闲';
+   }
+   stages[s].node.querySelector('.gpu-shell').setAttribute('stroke',state.updating||atEnd?'#bda5df':'var(--line)');
+  }
+  for(let m=0;m<M;m++)inputTiles[m].setAttribute('opacity',time<model.starts[0].F[m]+.03 ? 1 : time>=model.starts[0].B[m]+.91 ? .8 : .25);
+  for(let s=0;s<4;s++)for(let t=0;t<model.end;t++)ganttCells[s][t].setAttribute('opacity',t<=slot?1:.30);
+  const cursor=113+1126*Math.min(time,model.end)/model.end;playhead.setAttribute('x1',cursor);playhead.setAttribute('x2',cursor);
+  $('global-phase').textContent=atEnd?'✓ 统一更新完成':state.updating?'所有 Stage 统一更新权重':slot===0?'前向从 GPU 0 开始':activeCount?`当前 ${activeCount} 个 GPU ${p<.61?'执行计算':'传递结果'}`:'等待流水线';
+  $('memory-summary').textContent=`当前保留激活：${state.stages.map((r,s)=>'GPU '+s+' = '+r.activation.length).join('  ·  ')}  （共 ${cacheTotal} 块）`;
+  $('update-summary').textContent=state.stages[0].weight?'所有 GPU：Wᵗ → Wᵗ⁺¹':state.updating?'梯度已累计完成 · 正在统一更新':`本 mini-batch 内权重保持 Wᵗ · ${model.duration} 格调度＋统一更新`;
+  const captionKey=slot+':'+(p<.61?'compute':'send')+':'+atEnd;
+  if(captionKey!==oldCaption){
+   $('caption-text').textContent=atEnd?'所有 micro-batch 的梯度已累计，四个 Stage 统一更新一次。':state.updating?'流水线已排空，开始统一更新权重。':p>=.61?'前向发出激活 →；反向回传梯度 ←，并释放用过的激活。':mode==='gpipe'?'不同 GPU 同时处理不同的 μ；各 Stage 先完成前向，再执行反向。':'稳态中各 Stage 交替 F / B；反向完成后即可释放对应激活。';
+   $('caption-en').textContent=atEnd?'One optimizer step after the complete mini-batch.':state.updating?'Pipeline flush → synchronized optimizer step.':p>=.61?'Send activations forward; return gradients backward.':mode==='gpipe'?'All-forward, then all-backward.':'Warm-up → 1F1B → drain, with synchronous weights.';oldCaption=captionKey;
+  }
+  $('status').textContent=atEnd?'完成 Done':state.updating?'统一更新 Update':`第 ${slot+1} / ${model.duration} 步 · ${p<.15?'输入进入 Stage':p<.61?'执行 F / B':'传递结果'}`;
+  $('position').value=time.toFixed(3);$('position-label').value=`${Math.floor(Math.min(time,model.end))} / ${model.end} 步`;
+  $('back').disabled=time<=0;$('next').disabled=atEnd;$('play').textContent=playing?'Ⅱ 暂停 Pause':atEnd?'↺ 重播 Replay':'▶ 播放 Play';$('play').setAttribute('aria-pressed',String(playing));
+ }
+ function pause(){playing=false;if(raf!==null)cancelAnimationFrame(raf);raf=null;lastStamp=null;if(model)paint();}
+ function seek(value){pause();time=clamp(Number(value),0,model.end);paint();}
+ function tick(stamp){if(!playing)return;if(lastStamp!==null)time=Math.min(stopAt,time+Math.min(100,stamp-lastStamp)/Number($('speed').value));lastStamp=stamp;if(time>=stopAt){time=stopAt;playing=false;raf=null;lastStamp=null;}paint();if(playing)raf=requestAnimationFrame(tick);}
+ function start(target=model.end){if(time>=model.end)time=0;stopAt=target;playing=true;lastStamp=null;paint();raf=requestAnimationFrame(tick);}
+ function resetModel(){playing=false;if(raf!==null)cancelAnimationFrame(raf);raf=null;lastStamp=null;model=PipelineEngine.build(M,mode);time=0;mount();paint();document.querySelectorAll('[data-mode]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.mode===mode)));}
+ $('play').addEventListener('click',()=>playing?pause():start());$('next').addEventListener('click',()=>{pause();start(Math.min(model.end,Math.floor(time+1e-6)+1));});$('back').addEventListener('click',()=>seek(Math.max(0,Math.ceil(time-1e-6)-1)));$('reset').addEventListener('click',()=>seek(0));$('result').addEventListener('click',()=>seek(model.end));$('position').addEventListener('input',e=>seek(e.target.value));
+ document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>{mode=el.dataset.mode;resetModel();}));$('micro-count').addEventListener('change',e=>{M=Number(e.target.value);resetModel();});document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+ window.PipelineLab={seek,pause,play:()=>start(),get time(){return time;},get playing(){return playing;},get model(){return model;},get state(){return PipelineEngine.state(model,time);}};
+ resetModel();
+})();
+</script>
+</body>
+</html>

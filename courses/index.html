@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Courses | Han Tian</title><meta name="description" content="Interactive course materials: GPU matrix multiplication, FlashAttention, and Ring AllReduce."><meta name="author" content="Han Tian"><link rel="stylesheet" href="../stylesheets/styles.css"><link rel="stylesheet" href="courses.css"></head><body><table summary="Page layout" id="tlayout"><tr valign="top"><td id="layout-menu"><nav aria-label="Main navigation">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Courses | Han Tian</title><meta name="description" content="Interactive course materials: GPU matrix multiplication, FlashAttention, Ring AllReduce, and pipeline parallelism."><meta name="author" content="Han Tian"><link rel="stylesheet" href="../stylesheets/styles.css"><link rel="stylesheet" href="courses.css"></head><body><table summary="Page layout" id="tlayout"><tr valign="top"><td id="layout-menu"><nav aria-label="Main navigation">
 <div class="menu-category">Welcome</div>
 <div class="menu-item"><a href="../index.html">Home</a></div>
 <div class="menu-item"><a href="../index.html#publications">Publications</a></div>
@@ -27,6 +27,10 @@
 <p>Watch chunks move directly between four GPU nodes in a continuous animation. Reduce-Scatter transfers and merges chunks until each GPU holds one reduced chunk; All-Gather keeps the originals and distributes copies. Pause at any moment or play one complete round.</p>
 <ul class="topics"><li>Continuous chunk movement</li><li>Per-GPU chunk inventory</li><li>Merge versus copy</li></ul>
 <div class="resource-actions"><a class="open-demo" href="demos/ring-allreduce.html">Open demo →</a></div></article>
+<article class="resource" aria-labelledby="pipeline-title"><div class="resource-heading"><span class="resource-number">04</span><div><p class="resource-type">Interactive demo · Pipeline parallelism</p><h3 id="pipeline-title"><a href="demos/pipeline-parallelism.html">Pipeline Parallelism: Micro-batches Across GPU Stages</a></h3></div></div>
+<p>Watch activations move forward and gradients return backward across four GPU stages. Compare GPipe and synchronous 1F1B, follow retained activations and pipeline bubbles, and see all stages update their weights together after the complete mini-batch.</p>
+<ul class="topics"><li>Forward and backward data flow</li><li>GPipe versus synchronous 1F1B</li><li>Activation lifetime and pipeline bubbles</li></ul>
+<div class="resource-actions"><a class="open-demo" href="demos/pipeline-parallelism.html">Open demo →</a></div></article>
 </div></section></main>
 <div id="footer"><div id="footer-text"><a href="../index.html">Han Tian · Home</a></div></div></td></tr></table>
 </body></html>
