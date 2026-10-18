@@ -32,7 +32,7 @@
 <ul class="topics"><li>Forward and backward data flow</li><li>GPipe versus synchronous 1F1B</li><li>Activation lifetime and pipeline bubbles</li></ul>
 <div class="resource-actions"><a class="open-demo" href="demos/pipeline-parallelism.html">Open demo →</a></div></article>
 <article class="resource" aria-labelledby="tensor-title"><div class="resource-heading"><span class="resource-number">05</span><div><p class="resource-type">Interactive demo · Tensor parallelism</p><h3 id="tensor-title"><a href="demos/tensor-parallelism.html">Tensor Parallelism: One Complete Transformer Block</a></h3></div></div>
-<p>Follow one complete pre-LN Transformer block along two fixed GPU lanes as the view advances continuously from attention into the MLP. Global matrix indices label the feature partitions. A synchronized detail view below explains row and column splits, local head concatenation, and coordinate-wise AllReduce sums. Pause and pan back to inspect completed operations.</p>
+<p>Follow one complete pre-LN Transformer block along two fixed GPU lanes. The same smoothly scrolling flow directly shows full weights splitting by rows or columns into GPU shards, local head concatenation, and individual cells aligning for AllReduce sums. Select a partial-sum or result cell to inspect both GPUs’ numerical contributions.</p>
 <ul class="topics"><li>Complete Transformer forward pass</li><li>Column and row weight shards</li><li>Two AllReduces and residual paths</li></ul>
 <div class="resource-actions"><a class="open-demo" href="demos/tensor-parallelism.html">Open demo →</a></div></article>
 </div></section></main>

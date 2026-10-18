@@ -2,29 +2,32 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="A continuous pre-LN Transformer block along two fixed GPU lanes, with a smoothly advancing view, global matrix indices, and synchronized row/column split and reduction details.">
+<meta name="description" content="One continuous Transformer block across two fixed GPU lanes, with weight cuts, globally indexed shards, local head concatenation, and coordinate-wise reductions directly inside the same scrolling flow.">
 <title>Transformer Block · 完整张量并行动画</title>
 <style>
 :root{color-scheme:light;--bg:#f5f4f8;--paper:#fff;--ink:#282437;--muted:#706a80;--line:#e1dce9;--purple:#6540a4;--soft:#eee8f8;--g0:#2979b5;--g1:#148578;--t0:#e6f2fa;--t1:#e4f4ef;--sum:#8054b3;--sum-soft:#eee7f7;--neutral:#e9e5f0;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.5}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}a{color:var(--purple)}button,input,select{font:inherit}button{border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);padding:7px 12px;min-height:36px;cursor:pointer}button:hover:not(:disabled){background:var(--soft)}button:disabled{opacity:.4;cursor:default}button.primary{background:var(--purple);border-color:var(--purple);color:white}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #a17cdb;outline-offset:3px}select{border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);padding:6px 8px}.shell{max-width:1480px;margin:auto;padding:16px 25px 25px}.course-nav{font-size:12px;margin-bottom:12px}.course-nav a{text-decoration:none}header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:13px}h1{margin:0;font-size:26px;letter-spacing:-.025em;font-weight:650}.heading-en{font-size:13px;color:var(--muted)}.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:11px}.mode{text-align:left;padding:10px 13px}.mode strong{font-size:14px;font-weight:600}.mode span{display:block;font-size:12px;color:var(--muted);margin-top:2px}.mode[aria-pressed=true]{background:var(--soft);border-color:#bca4dc}.controls{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 13px 9px;margin-bottom:10px}.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.toolbar label{display:flex;gap:7px;align-items:center;margin-left:auto;font-size:12px;color:var(--muted)}.progress-row{display:flex;align-items:center;gap:9px;margin-top:9px;font-size:12px;color:var(--muted)}.progress-row input{flex:1;min-width:70px;accent-color:var(--purple)}.progress-row output{min-width:77px;text-align:right;font-variant-numeric:tabular-nums}.legend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:0 2px 10px}.legend i{width:10px;height:10px;display:inline-block;border-radius:2px;background:var(--g0);margin-right:5px;vertical-align:middle}.legend .gpu1 i{background:var(--g1)}.legend .sum i{background:var(--sum)}.legend .axes{margin-left:auto}.stage{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}.board-wrap{overflow:hidden}.board{width:100%;height:auto;display:block}.board text{font-family:Inter,"PingFang SC",system-ui,sans-serif;fill:var(--ink)}.global-band{fill:#fcfbfe}.global-label{font-size:12px;font-weight:550}.global-sub{font-size:10px;fill:var(--muted)!important}.gpu-shell{fill:#faf9fc;stroke:var(--line);stroke-width:1.5}.gpu-label{font-size:16px;font-weight:600}.gpu-note{font-size:11px;fill:var(--muted)!important}.matrix-title{font-size:12px;font-weight:550}.matrix-shape{font-size:10px;fill:var(--muted)!important}.matrix-sub{font-size:10px;fill:var(--muted)!important}.operator{font-size:19px;fill:#91869f!important}.small-op{font-size:11px;fill:var(--muted)!important}.comm-label{font-size:15px;font-weight:600;fill:var(--purple)!important}.comm-small{font-size:11px;fill:var(--muted)!important}.phase-heading{font-size:14px;font-weight:600;fill:var(--purple)!important}.phase-note{font-size:12px;fill:var(--muted)!important}.head-label{font-size:10px;font-weight:550}.phase-track{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding:9px 14px;background:#fcfbfe}.phase-item{font-size:11px;color:var(--muted);padding:3px 7px;border-radius:4px;background:#f2eff7}.phase-item.active{background:var(--soft);color:var(--purple)}.caption{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:11px 15px;border-top:1px solid var(--line);font-size:13px}.caption .en{font-size:12px;color:var(--muted);margin:3px 0 0}.comm-count{font-size:12px;color:var(--purple)}.footnote{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.75}.footnote summary{cursor:pointer}.footnote p{margin:8px 0 0}.footer{font-size:11px;color:var(--muted);margin-top:8px}.footer a{margin-right:14px}
 @media(max-width:760px){.shell{padding:12px 10px 22px}h1{font-size:21px}header{gap:3px}.heading-en{font-size:12px}.modes{grid-template-columns:1fr}.mode{padding:8px 11px}.mode span{display:inline;margin-left:9px;font-size:11px}.toolbar button{font-size:12px;padding:7px 9px}.toolbar label{margin-left:0}.legend{font-size:11px;gap:9px}.legend .axes{margin-left:0;width:100%}.board-wrap{overflow-x:auto}.board{min-width:1120px}.caption .en{font-size:11px}.progress-row{font-size:11px}}
 </style>
-<style>.flow-label{font-size:10px;font-weight:550}.residual-plus{font-size:24px;font-weight:600}.overview-note{font-size:12px;color:var(--muted);margin:0 2px 11px}.controls{margin-top:12px}</style><style>.view-controls{display:flex;align-items:center;gap:12px;padding:10px 15px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);flex-wrap:wrap}.view-controls label{display:flex;align-items:center;gap:6px}.view-controls input[type=range]{flex:1;min-width:140px;accent-color:var(--purple)}.follow-control{color:var(--purple);white-space:nowrap}.follow-control input{accent-color:var(--purple)}.section-label{font-size:12px;font-weight:600;fill:var(--purple)!important}.board-wrap{overflow-x:auto}.board{min-width:1100px}.matrix-sub{font-size:10px}.gpu-shell{fill:#fcfbfe}.flow-label{font-size:10px}</style><style>
-:root{color-scheme:light;--bg:#f5f4f8;--paper:#fff;--ink:#282437;--muted:#706a80;--line:#e1dce9;--purple:#6540a4;--soft:#eee8f8;--g0:#2979b5;--g1:#148578;--t0:#e6f2fa;--t1:#e4f4ef;--sum:#8054b3;--sum-soft:#eee7f7;--neutral:#e9e5f0;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.5}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}a{color:var(--purple)}button,input,select{font:inherit}button{border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);padding:7px 12px;min-height:36px;cursor:pointer}button:hover:not(:disabled){background:var(--soft)}button:disabled{opacity:.4;cursor:default}button.primary{background:var(--purple);border-color:var(--purple);color:white}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #a17cdb;outline-offset:3px}select{border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);padding:6px 8px}.shell{max-width:1480px;margin:auto;padding:16px 25px 25px}.course-nav{font-size:12px;margin-bottom:12px}.course-nav a{text-decoration:none}header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:13px}h1{margin:0;font-size:26px;letter-spacing:-.025em;font-weight:650}.heading-en{font-size:13px;color:var(--muted)}.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:11px}.mode{text-align:left;padding:10px 13px}.mode strong{font-size:14px;font-weight:600}.mode span{display:block;font-size:12px;color:var(--muted);margin-top:2px}.mode[aria-pressed=true]{background:var(--soft);border-color:#bca4dc}.controls{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 13px 9px;margin-bottom:10px}.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.toolbar label{display:flex;gap:7px;align-items:center;margin-left:auto;font-size:12px;color:var(--muted)}.progress-row{display:flex;align-items:center;gap:9px;margin-top:9px;font-size:12px;color:var(--muted)}.progress-row input{flex:1;min-width:70px;accent-color:var(--purple)}.progress-row output{min-width:77px;text-align:right;font-variant-numeric:tabular-nums}.legend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:0 2px 10px}.legend i{width:10px;height:10px;display:inline-block;border-radius:2px;background:var(--g0);margin-right:5px;vertical-align:middle}.legend .gpu1 i{background:var(--g1)}.legend .sum i{background:var(--sum)}.legend .axes{margin-left:auto}.stage{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}.board-wrap{overflow:hidden}.board{width:100%;height:auto;display:block}.board text{font-family:Inter,"PingFang SC",system-ui,sans-serif;fill:var(--ink)}.global-band{fill:#fcfbfe}.global-label{font-size:12px;font-weight:550}.global-sub{font-size:10px;fill:var(--muted)!important}.gpu-shell{fill:#faf9fc;stroke:var(--line);stroke-width:1.5}.gpu-label{font-size:16px;font-weight:600}.gpu-note{font-size:11px;fill:var(--muted)!important}.matrix-title{font-size:12px;font-weight:550}.matrix-shape{font-size:10px;fill:var(--muted)!important}.matrix-sub{font-size:10px;fill:var(--muted)!important}.operator{font-size:19px;fill:#91869f!important}.small-op{font-size:11px;fill:var(--muted)!important}.comm-label{font-size:15px;font-weight:600;fill:var(--purple)!important}.comm-small{font-size:11px;fill:var(--muted)!important}.phase-heading{font-size:14px;font-weight:600;fill:var(--purple)!important}.phase-note{font-size:12px;fill:var(--muted)!important}.head-label{font-size:10px;font-weight:550}.phase-track{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding:9px 14px;background:#fcfbfe}.phase-item{font-size:11px;color:var(--muted);padding:3px 7px;border-radius:4px;background:#f2eff7}.phase-item.active{background:var(--soft);color:var(--purple)}.caption{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:11px 15px;border-top:1px solid var(--line);font-size:13px}.caption .en{font-size:12px;color:var(--muted);margin:3px 0 0}.comm-count{font-size:12px;color:var(--purple)}.footnote{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.75}.footnote summary{cursor:pointer}.footnote p{margin:8px 0 0}.footer{font-size:11px;color:var(--muted);margin-top:8px}.footer a{margin-right:14px}
-@media(max-width:760px){.shell{padding:12px 10px 22px}h1{font-size:21px}header{gap:3px}.heading-en{font-size:12px}.modes{grid-template-columns:1fr}.mode{padding:8px 11px}.mode span{display:inline;margin-left:9px;font-size:11px}.toolbar button{font-size:12px;padding:7px 9px}.toolbar label{margin-left:0}.legend{font-size:11px;gap:9px}.legend .axes{margin-left:0;width:100%}.board-wrap{overflow-x:auto}.board{min-width:1120px}.caption .en{font-size:11px}.progress-row{font-size:11px}}
-.flow-label{font-size:10px;font-weight:550}.residual-plus{font-size:24px;font-weight:600}.overview-note{font-size:12px;color:var(--muted);margin:0 2px 11px}.controls{margin-top:12px}.view-controls{display:flex;align-items:center;gap:12px;padding:10px 15px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);flex-wrap:wrap}.view-controls label{display:flex;align-items:center;gap:6px}.view-controls input[type=range]{flex:1;min-width:140px;accent-color:var(--purple)}.follow-control{color:var(--purple);white-space:nowrap}.follow-control input{accent-color:var(--purple)}.section-label{font-size:12px;font-weight:600;fill:var(--purple)!important}.board-wrap{overflow-x:auto}.board{min-width:1100px}.matrix-sub{font-size:10px}.gpu-shell{fill:#fcfbfe}.flow-label{font-size:10px}.dimension-stage{background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:12px 0 17px}.dimension-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:10px 16px;background:#fcfbfe;font-size:14px}.dimension-head span{font-size:12px;color:var(--muted)}#dimension-wrap{overflow-x:auto}.dimension-board{display:block;width:100%;height:auto;min-width:1120px}.dimension-board text{font-family:Inter,"PingFang SC",system-ui,sans-serif;fill:var(--ink)}.dim-heading{font-size:18px;font-weight:650;fill:var(--purple)!important}.dim-subtitle{font-size:12px;fill:var(--muted)!important}.dim-label{font-size:14px;font-weight:550}.dim-matrix-title{font-size:13px;font-weight:650}.dim-axis{font-size:10px;fill:var(--muted)!important}.dim-index{font-size:9px;fill:#62596f!important;font-variant-numeric:tabular-nums}.dim-shape{font-size:13px;font-weight:600}.dim-small{font-size:11px;fill:var(--muted)!important}.dim-cut-label{font-size:12px;font-weight:600;fill:#ae6d25!important}.dim-gpu{font-size:15px;font-weight:650}.dim-sign{font-size:25px;fill:#9989ad!important}.dim-equation{font-size:12px;font-weight:550;fill:var(--purple)!important}.dim-number{font-size:9px;fill:#fff!important;font-variant-numeric:tabular-nums}.context-title{display:flex;gap:15px;align-items:baseline;font-size:15px;font-weight:600;margin:16px 2px 12px}.context-title span{font-size:12px;font-weight:400;color:var(--muted)}@media(max-width:760px){.context-title{flex-wrap:wrap;gap:3px}.dimension-head{padding:8px 11px}}.dimension-jumps{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid var(--line);padding-top:9px;margin-top:9px}.dimension-jumps span{font-size:11px;color:var(--muted);margin-right:5px}.dimension-jumps button{font-size:11px;padding:4px 8px;min-height:29px}.context-overview{margin-top:15px}.context-overview>summary{cursor:pointer;font-size:12px;color:var(--muted);margin-bottom:10px}.dimension-head span{font-size:11px}.dimension-board{min-width:1120px}</style><style>.axis-index{font-size:6px;fill:#756c83!important;font-weight:450}.dimension-details{margin-top:15px;border:1px solid var(--line);border-radius:10px;background:white;overflow:hidden}.dimension-details>summary{cursor:pointer;padding:10px 14px;font-size:13px;color:var(--purple);background:#fcfbfe}.dimension-stage{border:none;border-top:1px solid var(--line);border-radius:0;margin:0}.dimension-head span{font-size:11px}.heading-en{font-size:12px}.axis-guide{font-size:11px;color:var(--muted);margin:0 3px 9px}</style></head>
+<style>.flow-label{font-size:10px;font-weight:550}.residual-plus{font-size:24px;font-weight:600}.overview-note{font-size:12px;color:var(--muted);margin:0 2px 11px}.controls{margin-top:12px}</style><style>.view-controls{display:flex;align-items:center;gap:12px;padding:10px 15px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);flex-wrap:wrap}.view-controls label{display:flex;align-items:center;gap:6px}.view-controls input[type=range]{flex:1;min-width:140px;accent-color:var(--purple)}.follow-control{color:var(--purple);white-space:nowrap}.follow-control input{accent-color:var(--purple)}.section-label{font-size:12px;font-weight:600;fill:var(--purple)!important}.board-wrap{overflow-x:auto}.board{min-width:1100px}.matrix-sub{font-size:10px}.gpu-shell{fill:#fcfbfe}.flow-label{font-size:10px}</style><style> .axis-index{font-size:7px;fill:#6e627d!important;font-weight:450}.axis-guide{font-size:11px;color:var(--muted);margin:0 3px 9px}.inline-coordinate{font-size:10px;fill:var(--purple)!important;font-weight:600}.inline-arithmetic{font-size:10px;fill:var(--purple)!important;font-variant-numeric:tabular-nums}.board-wrap{overflow-x:auto}.board{min-width:1120px}.matrix-sub{font-size:10px}</style><style>.dimension-jumps{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid var(--line);padding-top:9px;margin-top:9px}.dimension-jumps span{font-size:11px;color:var(--muted);margin-right:5px}.dimension-jumps button{font-size:11px;padding:4px 8px;min-height:29px}</style><style>.inline-packet-label{font-size:8px;font-weight:600;fill:var(--purple)!important}</style></head>
 <body>
 <main class="shell">
 <nav class="course-nav" aria-label="Course navigation"><a href="https://tianhan4.github.io/courses/">← Courses · Software Optimization for Intelligent Computing</a></nav>
 <header><h1>完整 Transformer Block · 张量并行</h1><div class="heading-en" lang="en">Continuous scrolling · Pre-LN · 2 GPUs</div></header>
 <section class="controls" aria-label="动画控制 Animation controls"><div class="toolbar"><button type="button" id="play" class="primary" aria-pressed="false">▶ 播放 Play</button><button type="button" id="back">← 上一步 Back</button><button type="button" id="next">播放一步 One step →</button><button type="button" id="reset">↺ 回到开始 Reset</button><button type="button" id="result">最终结果 Result</button><label for="speed">速度 Speed <select id="speed"><option value="5000">慢速 Slow</option><option value="3300" selected>标准 Normal</option><option value="1900">快速 Fast</option></select></label></div><div class="progress-row"><label for="position">过程 Progress</label><input type="range" id="position" min="0" max="15" value="0" step="0.001"><output id="position-label" for="position"></output></div></section>
-<p class="axis-guide">激活：向下是 token 行 t，向右是特征列；权重：行是输入特征 k / f，列是输出特征 j / f。矩阵边缘显示全局编号。</p><div class="legend"><span><i></i>GPU 0 的特征 / head 分片</span><span class="gpu1"><i></i>GPU 1 的特征 / head 分片</span><span class="sum"><i></i>完整、复制的中间结果</span><span class="axes">权重按 [输入维, 输出维] 显示 · 先列后行</span></div>
+<p class="axis-guide">同一条流程：完整权重在对应位置按列 / 按行拆分（布局示意，分片常驻）；激活行 t 是 token，权重行 k / f 是输入特征。点选部分和或聚合结果的单元格可追踪同一坐标。</p><div class="legend"><span><i></i>GPU 0 的特征 / head 分片</span><span class="gpu1"><i></i>GPU 1 的特征 / head 分片</span><span class="sum"><i></i>完整、复制的中间结果</span><span class="axes">权重按 [输入维, 输出维] 显示 · 先列后行</span></div>
 <section class="stage" aria-label="完整 Transformer block 的连续前向动画"><div class="board-wrap" id="board-wrap"></div><div class="view-controls"><label class="follow-control"><input id="follow" type="checkbox" checked> 视野跟随计算向右移动</label><label for="view-position">回看 / 查看后续</label><input id="view-position" type="range" min="0" max="2580" step="1" value="0" aria-label="水平移动流程视野"></div><div class="caption" aria-live="polite"><div><div id="caption-text"></div><div class="en" id="caption-en" lang="en"></div></div><div class="comm-count" id="comm-count"></div></div></section>
-<details class="dimension-details" open><summary>当前步骤的行列切分与聚合详解（与上方连续流程同步）</summary><section class="dimension-stage" aria-label="当前步骤的维度详解"><div class="dimension-head"><strong>行列切分 · 同坐标聚合</strong><span>详细矩阵与主流程同步，可暂停观察</span></div><div id="dimension-wrap"></div></section></details><details class="footnote"><summary>演示口径 · Pre-LN / complete forward pass</summary><p>这里演示同一个标准 Pre-LN block 的完整前向：N₁ = LN₁(X₀)，A = Attention(N₁)，R = X₀ + A，N₂ = LN₂(R)，M = MLP(N₂)，Y = R + M。后续 MLP 使用真实的 N₂，不重新从原始输入开始。两个 GPU 始终处理全部 3 个 token，只分特征 / head；隐藏维 D=8，中间维 F=16，4 个 heads，每头 2 维。</p><p>Q/K/V 分别按完整 head 切列，W_O 按对应输入行切分；MLP 的 W_up 切列，W_down 按对应输入行切分。中间激活直接匹配下一层的权重行，不需要 AllGather。两次 AllReduce 分别还原 Attention 输出和 MLP 输出；残差相加与 LayerNorm 都对复制的完整向量本地执行，无需额外通信。权重分片常驻各 GPU。所有算子在长流程中有固定位置，视野随计算向右推进；Attention 的结果直接进入右侧 LN₂ 和 MLP。暂停后可拖动视野回看，未计算的激活显示为空淡矩阵。</p><p>本例 LayerNorm 的 γ=1、β=0、ε=10⁻⁵；使用 GeLU 小型 MLP、无 mask 的标准 MHA，省略 bias 与 dropout（等价于 dropout 概率 0）。未使用 sequence parallelism、GQA/MQA，也未展示反向传播。权重按 XW 约定画 [输入维, 输出维]，与 PyTorch Linear 常见的转置存储方向相反。通信框表示逻辑集合操作，不代表一个中央 GPU。悬停矩阵元素可查看示例数值。</p></details>
+<details class="footnote"><summary>演示口径 · Pre-LN / complete forward pass</summary><p>这里演示同一个标准 Pre-LN block 的完整前向：N₁ = LN₁(X₀)，A = Attention(N₁)，R = X₀ + A，N₂ = LN₂(R)，M = MLP(N₂)，Y = R + M。后续 MLP 使用真实的 N₂，不重新从原始输入开始。两个 GPU 始终处理全部 3 个 token，只分特征 / head；隐藏维 D=8，中间维 F=16，4 个 heads，每头 2 维。</p><p>Q/K/V 分别按完整 head 切列，W_O 按对应输入行切分；MLP 的 W_up 切列，W_down 按对应输入行切分。中间激活直接匹配下一层的权重行，不需要 AllGather。两次 AllReduce 分别还原 Attention 输出和 MLP 输出；残差相加与 LayerNorm 都对复制的完整向量本地执行，无需额外通信。权重分片常驻各 GPU。所有算子在长流程中有固定位置，视野随计算向右推进；Attention 的结果直接进入右侧 LN₂ 和 MLP。暂停后可拖动视野回看，未计算的激活显示为空淡矩阵。</p><p>本例 LayerNorm 的 γ=1、β=0、ε=10⁻⁵；使用 GeLU 小型 MLP、无 mask 的标准 MHA，省略 bias 与 dropout（等价于 dropout 概率 0）。未使用 sequence parallelism、GQA/MQA，也未展示反向传播。权重按 XW 约定画 [输入维, 输出维]，与 PyTorch Linear 常见的转置存储方向相反。通信框表示逻辑集合操作，不代表一个中央 GPU。悬停矩阵元素可查看示例数值。</p></details>
 <footer class="footer">Han Tian · Chapter 6 · <a href="https://arxiv.org/html/1909.08053" target="_blank" rel="noopener">Megatron-LM · Transformer tensor parallelism</a></footer>
 </main>
 <script>
+
+
+
+
+
+
+
 
 
 
@@ -64,154 +67,73 @@ const BlockEngine=(()=>{
  return{build,layerNorm};
 })();
 window.BlockEngine=BlockEngine;
-window.TPDimensionView=function(data){
- const NS='http://www.w3.org/2000/svg',host=document.getElementById('dimension-wrap'),clamp=x=>Math.max(0,Math.min(1,x)),colors=['#2979b5','#148578'],headColors=[['#2979b5','#8ab8dc'],['#148578','#82c9b7']],purple='#8054b3';
- const E=window.TensorEngine,ys=[190,415],fmt=x=>(x>=0?'+':'')+x.toFixed(5);
- let svg,mats=[],parts=[],state={},mode='',lastIndex=0,lastP=0,selected={t:0,j:3},liveTargets=[],formulaNodes=[];
- const el=(tag,attrs={})=>{const n=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,String(v)));return n;};
- function text(parent,x,y,value,cls='dim-label',anchor='middle'){const n=el('text',{x,y,class:cls,'text-anchor':anchor});n.textContent=value;parent.appendChild(n);return n;}
- function line(parent,x1,y1,x2,y2,color='#b9adc8',dash=''){parent.appendChild(el('line',{x1,y1,x2,y2,stroke:color,'stroke-width':1.5,'stroke-dasharray':dash}));}
- function arrow(x1,y1,x2,y2){svg.appendChild(el('path',{d:`M ${x1} ${y1} L ${x2} ${y2}`,fill:'none',stroke:'#b9adc8','stroke-width':1.6,'marker-end':'url(#dim-arrow)'}));}
- function matrix(key,values,x,y,cell=17,o={}){
-  const rows=values.length,cols=values[0].length,w=cols*cell,h=rows*cell,g=el('g',{'data-dim-matrix':key,'data-rows':rows,'data-cols':cols,'data-row-axis':o.rowAxis||'t','data-col-axis':o.colAxis||'j',transform:`translate(${x-w/2},${y-h/2})`}),cells=[],numbers=[];
-  text(g,w/2,-39,o.title||key,'dim-matrix-title');text(g,w/2,-23,o.xCaption||`${o.colAxis||'j'} 列 →`,'dim-axis');
-  const colOffset=o.colOffset||0,rowOffset=o.rowOffset||0;
-  for(let j=0;j<cols;j++)text(g,(j+.5)*cell,-7,String(j+colOffset),'dim-index');
-  for(let i=0;i<rows;i++)text(g,-8,(i+.5)*cell+3,String(i+rowOffset),'dim-index','end');
-  const yLabel=text(g,-31,h/2,o.yCaption||`${o.rowAxis||'t'} 行 ↓`,'dim-axis');yLabel.setAttribute('transform',`rotate(-90 -31 ${h/2})`);
-  for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){
-   const fill=typeof o.fill==='function'?o.fill(i,j):o.fill||'#e1dce9',rect=el('rect',{x:j*cell+.6,y:i*cell+.6,width:cell-1.2,height:cell-1.2,rx:1.5,fill,'fill-opacity':.76,'data-row':i,'data-col':j,'data-global-row':i+rowOffset,'data-global-col':j+colOffset}),tip=el('title');tip.textContent=`${key}[${i+rowOffset},${j+colOffset}] = ${values[i][j].toFixed(6)}`;rect.appendChild(tip);g.appendChild(rect);cells.push(rect);
-   if(o.pick){rect.style.cursor='pointer';rect.addEventListener('click',()=>{selected={t:i,j:j+colOffset};update(lastIndex,lastP);});}
-   if(o.numbers){const n=text(g,(j+.5)*cell,(i+.5)*cell+3,values[i][j].toFixed(2),'dim-number');n.setAttribute('pointer-events','none');numbers.push(n);}
-  }
-  text(g,w/2,h+20,`${rows} × ${cols}${o.shapeNote?' · '+o.shapeNote:''}`,'dim-shape');if(o.note)text(g,w/2,h+38,o.note,'dim-small');
-  svg.appendChild(g);const m={key,values,x,y,w,h,cell,rows,cols,g,cells,numbers,o};mats.push(m);return m;
+window.createInlineTensorDetails=function(C){
+ const{scene,locals,hubs,data,mat,el,txt,clone,fly,cy}=C,clamp=x=>Math.max(0,Math.min(1,x)),colors=['#2979b5','#148578'],orange='#dd9837';
+ const cuts=[],headPackets=[],sumTiles=[],selected={t:0,j:3};
+ function packet(key,source){const g=el('g',{'data-inline-packet':key,opacity:0,'pointer-events':'none','aria-hidden':'true'});clone(source,g);scene.appendChild(g);return{g,source};}
+ const specs=[
+  {phase:2,key:'QKV',name:'QKV 列切 · 以 W_Q 为例',values:data.WQ,x:540,cell:10,axis:'columns',rowAxis:'k',colAxis:'j',range:'j=0…3 │ 4…7',targets:locals.map(l=>l.weights[0])},
+  {phase:5,key:'WO',name:'W_O：按输入行切',values:data.WO,x:1510,cell:10,axis:'rows',rowAxis:'k',colAxis:'j',range:'k=0…3 ─ 4…7',targets:locals.map(l=>l.wo)},
+  {phase:9,key:'WU',name:'W_up：按输出列切',values:data.WU,x:2540,cell:9,axis:'columns',rowAxis:'k',colAxis:'f',range:'f=0…7 │ 8…15',targets:locals.map(l=>l.wu)},
+  {phase:11,key:'WD',name:'W_down：按输入行切',values:data.WD,x:3060,cell:6,axis:'rows',rowAxis:'f',colAxis:'j',range:'f=0…7 ─ 8…15',targets:locals.map(l=>l.wd)}
+ ];
+ for(const s of specs){
+  const g=el('g',{'data-inline-cut':s.key,'data-cut-axis':s.axis,'data-cut-phase':s.phase});scene.appendChild(g);
+  const full=mat(g,'full-'+s.key,s.values,s.x,220,s.cell,{title:s.name,rowAxis:s.rowAxis,colAxis:s.colAxis,fill:(i,j)=>colors[s.axis==='columns'?Math.floor(j/(s.values[0].length/2)):Math.floor(i/(s.values.length/2))],sub:s.range,weight:true});
+  const boundary=s.axis==='columns'?{x1:full.w/2,x2:full.w/2,y1:-4,y2:full.h+4}:{x1:-4,x2:full.w+4,y1:full.h/2,y2:full.h/2};full.g.appendChild(el('line',{...boundary,stroke:orange,'stroke-width':2.5,'stroke-dasharray':'4 2'}));
+  const p=s.targets.map((m,r)=>{const p=packet(`cut-${s.key}-${r}`,m);txt(p.g,m.w/2,-5,'GPU '+r,'inline-packet-label');return p;});cuts.push({...s,full,g,packets:p});
  }
- function packet(source,key){const g=el('g',{'data-dim-packet':key,opacity:0,'pointer-events':'none'});for(const c of source.cells)g.appendChild(c.cloneNode(true));svg.appendChild(g);return{g,source};}
- function move(p,from,to,q,alpha=1,scale=1){
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches)q=q<.5?0:1;
-  const x=from.x+(to.x-from.x)*q,y=from.y+(to.y-from.y)*q;
-  p.g.setAttribute('transform',`translate(${x-p.source.w/2*scale},${y-p.source.h/2*scale}) scale(${scale})`);p.g.setAttribute('opacity',alpha);p.g.dataset.x=x;p.g.dataset.y=y;
- }
- function shell(title,subtitle){
-  mats=[];parts=[];liveTargets=[];formulaNodes=[];svg=el('svg',{class:'dimension-board',viewBox:'0 0 1360 590',role:'img','aria-label':title});
-  svg.innerHTML='<defs><marker id="dim-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 8 4 L 0 8" fill="#aa98bd"/></marker></defs>';
-  text(svg,25,29,title,'dim-heading','start');text(svg,25,54,subtitle,'dim-subtitle','start');
-  for(let r=0;r<2;r++){
-   const y=ys[r],g=el('g',{'data-dim-gpu':r});g.innerHTML=`<rect x="490" y="${y-96}" width="838" height="193" rx="11" fill="${r===0?'#f3f8fc':'#f1f9f6'}" stroke="${r===0?'#cee0ef':'#cde5dc'}"/>`;svg.appendChild(g);text(g,505,y-77,'GPU '+r,'dim-gpu','start').style.fill=colors[r];
-  }
-  host.replaceChildren(svg);return svg;
- }
- function footer(lines){lines.forEach((v,i)=>formulaNodes.push(text(svg,25,548+i*20,v,i===0?'dim-equation':'dim-small','start')));}
- function highlight(m,predicate,color='#e3a13e'){m.cells.forEach((c,n)=>{const i=Math.floor(n/m.cols),j=n%m.cols,on=predicate(i,j);c.setAttribute('stroke',on?color:'none');c.setAttribute('stroke-width',on?2:0);});}
- function reveal(m,q){m.cells.forEach((c,k)=>c.setAttribute('fill-opacity',k/m.cells.length<q?.8:.08));m.numbers.forEach((n,k)=>n.setAttribute('opacity',k/m.cells.length<q?1:0));}
- function buildProjection(kind){
-  const column=kind==='qkv'||kind==='up',attn=kind==='qkv'||kind==='wo',weight=kind==='qkv'?data.WQ:kind==='up'?data.WU:kind==='wo'?data.WO:data.WD,split=column?weight[0].length/2:weight.length/2;
-  const wname={qkv:'W_Q',up:'W_up',wo:'W_O',down:'W_down'}[kind],rowName=column?'k':attn?'k':'f',colName=column?(attn?'j':'f'):'j',outName=column?(attn?'Q':'Z'):'P';
-  shell(column?`${wname} 按列切：输出特征列分给不同 GPU`:`${wname} 按行切：对输入特征求和的范围被分开`,column?`竖线切开左右两半；权重的全部 ${weight.length} 行均保留。此处展开常驻权重布局。${kind==='qkv'?'Q、K、V 三个投影均相同，放大 W_Q 为例。':''}`:`横线切开上下两半；权重的全部 ${weight[0].length} 个输出列均保留。输入激活沿特征列匹配这些权重行。`);
-  const cell=kind==='qkv'||kind==='wo'?20:12,full=matrix('full-weight',weight,225,290,cell,{title:`完整 ${wname}`,rowAxis:rowName,colAxis:colName,yCaption:`${rowName} 输入特征行 ↓`,xCaption:`${colName} 输出特征列 →`,fill:(i,j)=>colors[column?Math.floor(j/split):Math.floor(i/split)]});
-  const boundary=column?el('line',{x1:225,x2:225,y1:290-full.h/2-5,y2:290+full.h/2+5,stroke:'#d58436','stroke-width':3,'stroke-dasharray':'5 3'}):el('line',{x1:225-full.w/2-5,x2:225+full.w/2+5,y1:290,y2:290,stroke:'#d58436','stroke-width':3,'stroke-dasharray':'5 3'});boundary.dataset.cutAxis=column?'columns':'rows';svg.appendChild(boundary);
-  if(kind==='qkv')for(let h=0;h<4;h++)text(svg,full.x-full.w/2+(h*2+1)*full.cell,full.y+full.h/2+38,'h'+h,'dim-small');
-  text(svg,225,290+full.h/2+55,column?`列 ${colName}=0…${split-1} │ ${split}…${split*2-1}`:`行 ${rowName}=0…${split-1} ─ ${split}…${split*2-1}`,'dim-cut-label');
-  state={kind,column,attn,full,split,weights:[],inputs:[],outputs:[],wname};
-  for(let r=0;r<2;r++){
-   const y=ys[r],d=data.gpu[r],input=column?(attn?data.N1:data.N2):(attn?d.o:d.h),w=column?E.cols(weight,r*split,(r+1)*split):E.rows(weight,r*split,(r+1)*split),out=column?(attn?d.q:d.z):(attn?d.a:d.m);
-   const inputM=matrix('input-'+r,input,600,y,13,{title:column?'完整 '+(attn?'N₁':'N₂'):(attn?'O':'H')+'ᵢ',rowAxis:'t',colAxis:rowName,colOffset:column?0:r*split,yCaption:'t token 行 ↓',xCaption:column?'全部输入特征列':`${rowName} 输入列 ${r*split}…${(r+1)*split-1}`,fill:column?'#cec6dc':colors[r],shapeNote:column?'复制':'特征列分片'});
-   const wM=matrix('weight-'+r,w,830,y,14,{title:`${wname}${r===0?'₀':'₁'}`,rowAxis:rowName,colAxis:colName,rowOffset:column?0:r*split,colOffset:column?r*split:0,yCaption:column?'全部输入行 ↓':`${rowName} 对应输入行 ↓`,xCaption:column?`${colName} 输出列 ${r*split}…${(r+1)*split-1}`:'j 全部输出列 0…7',fill:colors[r]});
-   const outM=matrix('output-'+r,out,1145,y,17,{title:`${outName}${r===0?'₀':'₁'}${column?'':' · 部分和'}`,rowAxis:'t',colAxis:colName,colOffset:column?r*split:0,yCaption:'t 全部 token 行 ↓',xCaption:column?`${colName} 输出列 ${r*split}…${(r+1)*split-1}`:'j 全部输出列 0…7',fill:colors[r],pick:!column,shapeNote:column?'不同特征列':'同坐标贡献'});
-   text(svg,710,y+6,'×','dim-sign');text(svg,1008,y+6,'=','dim-sign');
-   const p=packet(wM,'weight-'+r);parts.push(p);state.inputs.push(inputM);state.weights.push(wM);state.outputs.push(outM);
-  }
-  footer(column?[`权重 ${weight.length}×${weight[0].length} → 两份 ${weight.length}×${split}；全局输出 [${outName}₀ │ ${outName}₁] 为 3×${split*2}，实际保持两份 3×${split} 列分片。`,`t=0,1,2 三行 token 始终完整；两个 GPU 直接生成自己的输出特征列，此处没有 AllGather。`]:['','点选右侧任一部分和单元格，可跟踪同一 (t,j) 的两份贡献；橙框标出匹配的激活列与权重行。']);
- }
- function paintProjection(p){
-  const s=state,{column,split,full}=s,q=clamp((p-.15)/.5);
-  s.full.cells.forEach(c=>c.setAttribute('fill-opacity',.8-.58*q));
-  for(let r=0;r<2;r++){
-   const m=s.weights[r],start={x:full.x+(column?(r===0?-1:1)*full.w/4:0),y:full.y+(column?0:(r===0?-1:1)*full.h/4)},gap=clamp(p/.15)*14;
-   if(column)start.x+=(r===0?-1:1)*gap;else start.y+=(r===0?-1:1)*gap;
-   const scale=full.cell/m.cell+(1-full.cell/m.cell)*q;move(parts[r],start,{x:m.x,y:m.y},q,p>.02&&p<.72?Math.min(clamp(p/.08),clamp((.72-p)/.08)):0,scale);m.g.setAttribute('opacity',1);m.cells.forEach(c=>c.setAttribute('fill-opacity',.08+.72*clamp((p-.53)/.18)));reveal(s.outputs[r],clamp((p-.66)/.28));
-   if(!column){const k=Math.min(split-1,Math.floor(clamp((p-.60)/.35)*split));highlight(s.inputs[r],(i,j)=>j===k);highlight(m,(i,j)=>i===k);highlight(s.outputs[r],(i,j)=>i===selected.t&&j===selected.j);}
-  }
-  if(!column){const range=state.attn?'k':'f',source=state.attn?'O':'H',w=state.wname,k=Math.min(split-1,Math.floor(clamp((p-.60)/.35)*split)),t=selected.t,j=selected.j;
-   formulaNodes[1].textContent=`橙框：GPU 0 的 ${range}=${k} → ${fmt(s.inputs[0].values[t][k])} × ${fmt(s.weights[0].values[k][j])}；GPU 1 的 ${range}=${split+k} → ${fmt(s.inputs[1].values[t][k])} × ${fmt(s.weights[1].values[k][j])}。匹配的是同一输入特征编号。`;
-   formulaNodes[0].textContent=`P₀[${selected.t},${selected.j}] = Σ${range}=0…${split-1} ${source}[t,${range}]${w}[${range},j] = ${fmt(state.outputs[0].values[selected.t][selected.j])}    ｜    P₁：${range}=${split}…${split*2-1} → ${fmt(state.outputs[1].values[selected.t][selected.j])}`;
+ for(let r=0;r<2;r++)for(let h=0;h<2;h++)headPackets.push({r,h,target:locals[r].heads[h].q,packet:packet(`head-${r}-${h}`,locals[r].heads[h].q)});
+ for(let a=0;a<2;a++){
+  const hub=hubs[a],g=hub.g;
+  hub.sampleLabel=txt(g,hub.x,636,'','inline-coordinate');hub.sampleTerms=txt(g,hub.x,650,'','inline-arithmetic');hub.sampleSum=txt(g,hub.x,664,'','inline-arithmetic');
+  hub.note.textContent='同坐标逐格相加 · 形状保持 3×8';
+  for(let r=0;r<2;r++)for(let i=0;i<3;i++)for(let j=0;j<8;j++){
+   const source=a===0?locals[r].pa:locals[r].pm,target=hub.result,group=el('g',{'data-aggregate-cell':`${a}-${r}-${i}-${j}`,'data-reduction':a,'data-gpu-rank':r,'data-row':i,'data-col':j,opacity:0,'pointer-events':'none'});
+   const rect=el('rect',{x:-source.cell/2+.5,y:-source.cell/2+.5,width:source.cell-1,height:source.cell-1,rx:1,fill:colors[r],'fill-opacity':.9});group.appendChild(rect);scene.appendChild(group);
+   sumTiles.push({a,r,i,j,g:group,rect,source,target,from:{x:source.x-source.w/2+(j+.5)*source.cell,y:source.y-source.h/2+(i+.5)*source.cell},to:{x:target.x-target.w/2+(j+.5)*target.cell,y:target.y-target.h/2+(i+.5)*target.cell}});
   }
  }
- function buildHeads(join){
-  shell(join?'本地 heads 按特征列拼接：3×2 与 3×2 → 3×4':'每个 GPU 的 4 个特征列再分成 2 个完整 head',join?'concat 沿列 k 左右拼接，token 的 3 行保持对齐；只拼本 GPU 的 heads，不进行跨 GPU 聚合。':'每个 head 保留全部 token，只取自己对应的 2 个特征列。head 内 QKᵀ 的求和维是 d_h=2。');
-  // Head splitting and concatenation both remain entirely inside their GPU.
-  svg.querySelectorAll('[data-dim-gpu] rect').forEach(n=>{n.setAttribute('x','35');n.setAttribute('width','1293');});svg.querySelectorAll('[data-dim-gpu] text').forEach(n=>n.setAttribute('x','50'));
-  state={join,rows:[]};
-  for(let r=0;r<2;r++){
-   const y=ys[r],d=data.gpu[r],row={head:[]};state.rows.push(row);
-   if(join){
-    for(let h=0;h<2;h++)row.head.push(matrix(`head-${r}-${h}`,d.heads[h].o,250+h*220,y,25,{title:`O_head${r*2+h}`,rowAxis:'t',colAxis:'k',colOffset:r*4+h*2,fill:headColors[r][h],xCaption:`k=${r*4+h*2},${r*4+h*2+1}`,yCaption:'t token 行 ↓'}));
-    row.result=matrix('local-concat-'+r,d.o,850,y,25,{title:`O${r===0?'₀':'₁'} = concat(本地 heads)`,rowAxis:'t',colAxis:'k',colOffset:r*4,fill:(i,j)=>headColors[r][Math.floor(j/2)],xCaption:`k=${r*4}…${r*4+3}`,shapeNote:'2+2 列'});
-    text(svg,360,y+7,'│','dim-sign');arrow(530,y,750,y);
-    text(svg,1150,y-10,'下一步对齐 W_O 的行','dim-label');text(svg,1150,y+15,`Oᵢ 的 k=${r*4}…${r*4+3}`,'dim-small');text(svg,1150,y+35,`↔ W_O 的输入行 ${r*4}…${r*4+3}`,'dim-small');
-    row.head.forEach((m,h)=>parts.push(packet(m,`concat-${r}-${h}`)));
-   }else{
-    row.source=matrix('head-source-'+r,d.q,250,y,25,{title:'Qᵢ · 本 GPU 的 4 列',rowAxis:'t',colAxis:'j',colOffset:r*4,fill:(i,j)=>headColors[r][Math.floor(j/2)],xCaption:`j=${r*4}…${r*4+3}`});
-    for(let h=0;h<2;h++){const m=matrix(`head-${r}-${h}`,d.heads[h].q,710+h*360,y,25,{title:`Q_head${r*2+h}`,rowAxis:'t',colAxis:'j',colOffset:r*4+h*2,fill:headColors[r][h],xCaption:`j=${r*4+h*2},${r*4+h*2+1}`,shapeNote:'完整 head'});row.head.push(m);parts.push(packet(m,`head-split-${r}-${h}`));if(h===0)arrow(340,y,600,y);}
+ function mark(m,predicate){m.cells.forEach((c,n)=>{const hit=predicate(Math.floor(n/m.cols),n%m.cols);c.setAttribute('stroke',hit?orange:'none');c.setAttribute('stroke-width',hit?1.6:0);});}
+ function update(index,p){
+  for(const l of locals)for(const m of l.mats)mark(m,()=>false);
+  for(const c of cuts){
+   const active=index===c.phase,done=index>c.phase,q=clamp((p-.12)/.48);c.full.cells.forEach(n=>n.setAttribute('fill-opacity',done?.3:active?.8-.5*q:.76));c.g.dataset.completed=String(done||active&&p>.63);
+   for(let r=0;r<2;r++){
+    const m=c.targets[r],sign=r===0?-1:1,start={x:c.full.x+(c.axis==='columns'?sign*c.full.w/4:0),y:c.full.y+(c.axis==='rows'?sign*c.full.h/4:0),w:m.w,h:m.h},gap=clamp(p/.12)*10;
+    if(c.axis==='columns')start.x+=sign*gap;else start.y+=sign*gap;
+    const scale=c.full.cell/m.cell+(1-c.full.cell/m.cell)*q;
+    fly(c.packets[r].g,start,{x:m.x,y:m.y},q,active&&p>.02&&p<.68?Math.min(clamp(p/.07),clamp((.68-p)/.07)):0,0,scale);
+    if(active)m.cells.forEach(n=>n.setAttribute('fill-opacity',.12+.68*clamp((p-.49)/.14)));
+   }
+   if(active&&c.axis==='rows'){
+    const split=c.values.length/2,k=Math.min(split-1,Math.floor(clamp((p-.64)/.31)*split));
+    for(let r=0;r<2;r++){const input=index===5?locals[r].o:locals[r].h;mark(input,(i,j)=>j===k);mark(c.targets[r],(i,j)=>i===k);}
    }
   }
-  footer(join?['列数相加：2 + 2 = 4；每个输出位置只来自一个 head，没有把两个 head 的数值相加。','全局 O 的 8 列仍分布在两 GPU：GPU 0 持有 0…3，GPU 1 持有 4…7；不先拼成完整 O。']:['每个 head：Q_h (3×2) × K_hᵀ (2×3) → S_h (3×3)，随后 Softmax(S_h) × V_h (3×2) → O_h (3×2)。','这里只把 GPU 内已有的特征列拆成 heads；K、V 同样处理，未切 token 行，也没有跨 GPU 通信。']);
- }
- function paintHeads(p){const q=clamp((p-.12)/.65);state.rows.forEach((row,r)=>{for(let h=0;h<2;h++){const m=row.head[h],from=state.join?{x:m.x,y:m.y}:{x:row.source.x+(h===0?-1:1)*row.source.w/4,y:m.y},to=state.join?{x:row.result.x+(h===0?-1:1)*row.result.w/4,y:m.y}:{x:m.x,y:m.y};move(parts[r*2+h],from,to,q,p>.08&&p<.87?Math.min(clamp((p-.08)/.08),clamp((.87-p)/.1)):0);if(!state.join)m.cells.forEach(c=>c.setAttribute('fill-opacity',.08+.72*clamp((p-.65)/.2)));}if(state.join)reveal(row.result,clamp((p-.68)/.22));});}
- function buildReduce(attn){
-  const a=attn?data.gpu[0].a:data.gpu[0].m,b=attn?data.gpu[1].a:data.gpu[1].m,sum=attn?data.A:data.M;
-  shell(`AllReduce ${attn?'①':'②'}：同一个 (token 行 t，输出特征列 j) 的贡献相加`,'两份 3×8 部分和 → 一份 3×8 完整结果 → 每个 GPU 都保留同一份 3×8。行数、列数都不增加。');
-  svg.querySelectorAll('[data-dim-gpu] rect').forEach(n=>{n.setAttribute('x','35');n.setAttribute('width','1293');});svg.querySelectorAll('[data-dim-gpu] text').forEach(n=>n.setAttribute('x','50'));
-  state={sum,inputs:[],copies:[],tiles:[]};state.phaseLabel=text(svg,25,80,'','dim-cut-label','start');
-  for(let r=0;r<2;r++){
-   state.inputs.push(matrix('partial-'+r,r===0?a:b,240,ys[r],25,{title:`P${r===0?'₀':'₁'} · 完整形状的部分和`,rowAxis:'t',colAxis:'j',fill:colors[r],xCaption:'j 全部输出列 0…7',yCaption:'t 全部 token 行 ↓',pick:true,numbers:true}));
-   state.copies.push(matrix('replica-'+r,sum,1130,ys[r],25,{title:attn?'完整 A':'完整 M',rowAxis:'t',colAxis:'j',fill:purple,xCaption:'j 全部输出列 0…7',yCaption:'t 全部 token 行 ↓',pick:true,numbers:true,shapeNote:'两个 GPU 数值相同'}));
+  for(const h of headPackets){const source=locals[h.r].qkv[0],m=h.target,q=clamp((p-.08)/.54),start={x:source.x+(h.h===0?-1:1)*source.w/4,y:source.y,w:m.w,h:m.h};fly(h.packet.g,start,{x:m.x,y:m.y},q,index===3&&p>.05&&p<.72?Math.min(clamp((p-.05)/.06),clamp((.72-p)/.08)):0,0,source.cell/m.cell+(1-source.cell/m.cell)*q);}
+  for(const tile of sumTiles){
+   const active=index===(tile.a===0?6:12),start=.05+tile.j*.012,q=clamp((p-start)/.39),visible=active&&p>start&&p<start+.45,scale=1+(tile.target.cell/tile.source.cell-1)*q;
+   tile.g.setAttribute('transform',`translate(${tile.from.x+(tile.to.x-tile.from.x)*q},${tile.from.y+(tile.to.y-tile.from.y)*q}) scale(${scale})`);tile.g.setAttribute('opacity',visible?Math.min(clamp((p-start)/.04),clamp((start+.45-p)/.06)):0);
+   tile.g.dataset.targetRow=tile.i;tile.g.dataset.targetCol=tile.j;
+   const chosen=tile.i===selected.t&&tile.j===selected.j;tile.rect.setAttribute('stroke',chosen?orange:'none');tile.rect.setAttribute('stroke-width',chosen?2:0);
   }
-  svg.appendChild(el('rect',{x:510,y:220,width:335,height:173,rx:12,fill:'#f2edf8',stroke:'#d7c8e7'}));text(svg,678,244,'按坐标 Reduce · 求和','dim-matrix-title');
-  state.result=matrix('reduced',sum,678,317,25,{title:'',rowAxis:'t',colAxis:'j',fill:purple,xCaption:'j=0…7，保持原列坐标',yCaption:'t 行 ↓',pick:true,numbers:true});state.result.g.querySelector('.dim-matrix-title').textContent='';
-  text(svg,445,ys[0]+5,'↘','dim-sign');text(svg,445,ys[1]+5,'↗','dim-sign');text(svg,940,ys[0]+5,'↗','dim-sign');text(svg,940,ys[1]+5,'↘','dim-sign');
-  text(svg,900,302,'每 GPU 一份','dim-small');text(svg,900,322,'相同完整结果','dim-small');
-  for(let r=0;r<2;r++)for(let i=0;i<3;i++)for(let j=0;j<8;j++){
-   const m=state.inputs[r],g=el('g',{'data-sum-tile':`${r}-${i}-${j}`,opacity:0,'pointer-events':'none'});g.appendChild(el('rect',{x:-11.5,y:-11.5,width:23,height:23,rx:2,fill:colors[r],'fill-opacity':.85}));svg.appendChild(g);state.tiles.push({g,r,i,j,from:{x:m.x-m.w/2+(j+.5)*25,y:m.y-m.h/2+(i+.5)*25},to:{x:678-100+(j+.5)*25,y:317-37.5+(i+.5)*25}});
+  for(let a=0;a<2;a++){
+   const hub=hubs[a],phase=a===0?6:12,values=a===0?data.A:data.M,part0=a===0?data.gpu[0].a:data.gpu[0].m,part1=a===0?data.gpu[1].a:data.gpu[1].m,{t,j}=selected;
+   const fmt=v=>(v>=0?'+':'')+v.toFixed(4);
+   hub.sampleLabel.textContent=`[t=${t}, j=${j}] · 同一输出坐标`;
+   hub.sampleTerms.textContent=`${fmt(part0[t][j])} + ${fmt(part1[t][j])}`;
+   hub.sampleSum.textContent=`≈ ${fmt(values[t][j])} · 两 GPU 相同`;
+   if(index===phase){hub.result.g.setAttribute('opacity',1);hub.result.cells.forEach((n,k)=>n.setAttribute('fill-opacity',p>.46+(k%8)*.012?.85:.08));}
+   for(let r=0;r<2;r++)for(const m of [a===0?locals[r].pa:locals[r].pm,a===0?locals[r].a:locals[r].m])mark(m,(i,col)=>i===t&&col===j);
+   mark(hub.result,(i,col)=>i===t&&col===j);
   }
-  state.copies.forEach((m,r)=>parts.push(packet(m,'replicated-sum-'+r)));
-  footer(['','点选任一矩阵单元格追踪对应坐标。这里是同坐标数值相加；特征列拼接在前面的本地 heads 阶段完成。']);
  }
- function paintReduce(p){
-  state.phaseLabel.textContent=p<.42?'① 对齐同一 (t,j)：两份贡献流向同一个输出格':p<.64?'② 逐元素求和：仍是 3 行 × 8 列，原坐标保持不变':'③ 结果复制：每个 GPU 保留同一份完整 3×8';
-  for(const tile of state.tiles){const picked=tile.i===selected.t&&tile.j===selected.j,rect=tile.g.querySelector('rect');rect.setAttribute('stroke',picked?'#e3a13e':'none');rect.setAttribute('stroke-width',picked?3:0);const start=.06+tile.j*.014,q=clamp((p-start)/.35),visible=p>start&&p<start+.4;tile.g.setAttribute('transform',`translate(${tile.from.x+(tile.to.x-tile.from.x)*q},${tile.from.y+(tile.to.y-tile.from.y)*q})`);tile.g.setAttribute('opacity',visible?Math.min(clamp((p-start)/.04),clamp((start+.4-p)/.05)):0);tile.g.dataset.targetRow=tile.i;tile.g.dataset.targetCol=tile.j;}
-  state.result.cells.forEach((c,n)=>{const j=n%8;c.setAttribute('fill-opacity',p>.42+j*.014?.84:.08);state.result.numbers[n].setAttribute('opacity',p>.42+j*.014?1:0);});
-  for(let r=0;r<2;r++){const q=clamp((p-.64)/.25);move(parts[r],{x:678,y:317},{x:state.copies[r].x,y:state.copies[r].y},q,p>.63&&p<.95?Math.min(clamp((p-.63)/.06),clamp((.95-p)/.06)):0);reveal(state.copies[r],clamp((p-.84)/.12));}
-  [...state.inputs,state.result,...state.copies].forEach(m=>highlight(m,(i,j)=>i===selected.t&&j===selected.j));
-  const t=selected.t,j=selected.j,a=state.inputs[0].values[t][j],b=state.inputs[1].values[t][j];formulaNodes[0].textContent=`同一坐标 [t=${t}, j=${j}]：${fmt(a)}（GPU 0） + ${fmt(b)}（GPU 1） = ${fmt(state.sum[t][j])}；两个 GPU 最后都得到此值。`;
- }
- function buildLocal(index){
-  let values,title,subtitle,axis='j',sharded=false,inputs;
-  if(index===1){values=data.N1;inputs=[data.X,data.X];title='输入复制与 LN₁：两个 GPU 均保留完整 token × 隐藏特征';subtitle='每份输入都是 3×8；此处复制完整数据，未把行或列拆开。LayerNorm 在各 GPU 本地沿 8 个隐藏特征计算。';}
-  else if(index===7){values=data.R;inputs=[data.A,data.A];title='残差：每个 GPU 本地做 X₀ + A';subtitle='完整 3×8 与完整 3×8 按相同坐标相加，得到完整 R；不增加维度，也不增加跨 GPU 通信。';}
-  else if(index===8){values=data.N2;inputs=[data.R,data.R];title='LN₂：完整 R 直接进入右侧 MLP';subtitle='两个 GPU 都持有 R 的全部 3 行 token、全部 8 列隐藏特征。归一化保持 3×8，接着让 W_up 切输出列。';}
-  else if(index===10){sharded=true;axis='f';values=null;inputs=data.gpu.map(d=>d.z);title='GeLU：保持各 GPU 的中间特征列分片';subtitle='GPU 0 处理 f=0…7，GPU 1 处理 f=8…15；逐元素激活保持各自的 3×8，无需拼接或通信。';}
-  else{values=data.Y;inputs=[data.M,data.M];title='最终残差：每个 GPU 都得到完整 block 输出 Y';subtitle='本地 R + M → Y。最终每份 Y 都是 3 行 token × 8 列隐藏特征，两个 GPU 的数值相同。';}
-  shell(title,subtitle);svg.querySelectorAll('[data-dim-gpu] rect').forEach(n=>{n.setAttribute('x','35');n.setAttribute('width','1293');});svg.querySelectorAll('[data-dim-gpu] text').forEach(n=>n.setAttribute('x','50'));state={outputs:[]};
-  for(let r=0;r<2;r++){
-   const y=ys[r],offset=sharded?r*8:0,m=matrix('local-before-'+r,inputs[r],280,y,24,{title:sharded?'Zᵢ':'完整输入',rowAxis:'t',colAxis:axis,colOffset:offset,fill:sharded?colors[r]:'#c9bed9',xCaption:`${axis}=${offset}…${offset+7}`,yCaption:'t token 行 ↓'});
-   text(svg,655,y+6,index===1||index===8?'LayerNorm':index===10?'GeLU':'＋ 本地保留的残差','dim-label');arrow(430,y,535,y);arrow(770,y,900,y);
-   const out=matrix('local-after-'+r,sharded?data.gpu[r].h:values,1100,y,24,{title:sharded?'Hᵢ':'完整输出',rowAxis:'t',colAxis:axis,colOffset:offset,fill:sharded?colors[r]:purple,xCaption:`${axis}=${offset}…${offset+7}`,yCaption:'t token 行 ↓'});state.outputs.push(out);parts.push(packet(m,'local-'+r));
-  }
-  footer([sharded?'形状仍是每 GPU 3×8，但两份的 f 列编号不同：合起来覆盖全局 16 个中间特征。':'token 行 t=0,1,2；隐藏特征列 j=0…7。每个 GPU 的矩阵都是完整的 3×8。','行列方向固定：向下是 token 行 t，向右是特征列；权重矩阵的行则是输入特征维，切分时单独标注。']);
- }
- function update(index,p){
-  lastIndex=index;lastP=p;const next=index===0||index===2?'qkv':index===3?'heads-split':index===4?'heads-join':index===5?'wo':index===6?'reduce-a':index===9?'up':index===11?'down':index===12?'reduce-m':'local-'+index;
-  if(mode!==next){mode=next;if(['qkv','wo','up','down'].includes(mode))buildProjection(mode);else if(mode.startsWith('heads'))buildHeads(mode==='heads-join');else if(mode.startsWith('reduce'))buildReduce(mode==='reduce-a');else buildLocal(index);}
-  host.dataset.operation=mode;host.dataset.phase=String(index);
-  if(['qkv','wo','up','down'].includes(mode))paintProjection(p);else if(mode.startsWith('heads'))paintHeads(p);else if(mode.startsWith('reduce'))paintReduce(p);else{state.outputs.forEach((m,r)=>{reveal(m,clamp((p-.52)/.4));move(parts[r],{x:280,y:ys[r]},{x:1100,y:ys[r]},clamp((p-.08)/.5),p>.07&&p<.65?Math.min(clamp((p-.07)/.08),clamp((.65-p)/.1)):0);});}
- }
- return{update,get mode(){return mode;},get selected(){return selected;},get matrices(){return mats.map(m=>({key:m.key,rows:m.rows,cols:m.cols,rowAxis:m.o.rowAxis,colAxis:m.o.colAxis,rowOffset:m.o.rowOffset||0,colOffset:m.o.colOffset||0}));}};
+ return{update,select(t,j){selected.t=t;selected.j=j;},get selected(){return{...selected};},get cuts(){return cuts.map(c=>({phase:c.phase,axis:c.axis,full:[c.full.rows,c.full.cols],shards:c.targets.map(m=>[m.rows,m.cols]),rowAxis:c.rowAxis,colAxis:c.colAxis}));}};
 };
 
 (()=>{
- const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x)),data=BlockEngine.build(),cy=[282,526],owner=r=>`var(--g${r})`;
+ const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x)),data=BlockEngine.build(),cy=[406,650],owner=r=>`var(--g${r})`;
  const plan=[
   ['layout','输入 X₀','输入 X₀ 在两个 GPU 上复制；Q/K/V、W_up 按列切分，W_O、W_down 按对应行切分。','The input is replicated; each GPU owns aligned weight shards.'],
   ['ln1','LN₁','每个 GPU 对完整的隐藏维做 LayerNorm，得到相同的 N₁；保留 X₀ 用作第一条残差。','LayerNorm is local on each replicated full-hidden tensor.'],
@@ -230,7 +152,7 @@ window.TPDimensionView=function(data){
   ['result','输出 Y','两个 GPU 得到相同的完整 Y。全过程前向只有两次 AllReduce，没有中间 AllGather。','One complete Transformer block; two forward AllReduces.']
  ];
  const WORLD=3830,VIEW=1250,MAX_CAMERA=WORLD-VIEW,focus=[130,330,650,965,1235,1570,1820,2140,2350,2630,2890,3130,3370,3690,3690];
- let dimensionView=null,time=0,playing=false,raf=null,lastStamp=null,stopAt=plan.length,camera=0,following=true,svg,scene,viewWindow,rail=[],locals=[],hubs=[],moves=[],packets=[],skips=[],lastStep=-1,captionKey='';
+ let inlineDetail=null,time=0,playing=false,raf=null,lastStamp=null,stopAt=plan.length,camera=0,following=true,svg,scene,viewWindow,rail=[],locals=[],hubs=[],moves=[],packets=[],skips=[],lastStep=-1,captionKey='';
  const el=(tag,attrs={})=>{const n=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))n.setAttribute(k,String(v));return n;};
  function txt(parent,x,y,value,cls='matrix-title',anchor='middle'){const n=el('text',{x,y,class:cls,'text-anchor':anchor});n.textContent=value;parent.appendChild(n);return n;}
  function mat(parent,key,values,x,y,cell=8,opts={}){
@@ -245,14 +167,16 @@ window.TPDimensionView=function(data){
   else if(['q','k','v'].includes(name)){colOffset=rank*4;}
   else if(name==='O'){colAxis='k';colOffset=rank*4;}
   else if(['Z','H'].includes(name)){colAxis='f';colOffset=rank*8;}
-  else if(/head[01]-O/.test(name)){colAxis='k';colOffset=rank*4+head*2;}
+  else if(['N1','N2'].includes(name)){colAxis='k';}
+  else if(/head[01]-(Q|K|V|O)/.test(name)){colAxis=name.endsWith('-O')?'k':'j';colOffset=rank*4+head*2;}
   else if(/head[01]-(score|P)/.test(name)){colAxis='t′';}
+  rowAxis=opts.rowAxis||rowAxis;colAxis=opts.colAxis||colAxis;rowOffset=opts.rowOffset??rowOffset;colOffset=opts.colOffset??colOffset;
   g.dataset.rowAxis=rowAxis;g.dataset.colAxis=colAxis;g.dataset.rowStart=rowOffset;g.dataset.colStart=colOffset;
   for(let j=0;j<cols;j++)txt(g,(j+.5)*cell,-3,String(j+colOffset),'axis-index');
   for(let i=0;i<rows;i++)if(cell>=7||i===0||i===rows-1||i%2===0&&i<rows-2)txt(g,-3,(i+.5)*cell+2,String(i+rowOffset),'axis-index','end');
-  for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){const rect=el('rect',{x:j*cell+.5,y:i*cell+.5,width:cell-1,height:cell-1,rx:1,fill:opts.fill||'var(--neutral)','fill-opacity':.8}),tip=el('title');tip.textContent=`${key}[${rowAxis}=${i+rowOffset}, ${colAxis}=${j+colOffset}] = ${values[i][j].toFixed(4)}`;rect.appendChild(tip);g.appendChild(rect);cells.push(rect);}
+  for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){const rect=el('rect',{x:j*cell+.5,y:i*cell+.5,width:cell-1,height:cell-1,rx:1,fill:typeof opts.fill==='function'?opts.fill(i,j):opts.fill||'var(--neutral)','fill-opacity':.8}),tip=el('title');tip.textContent=`${key}[${rowAxis}=${i+rowOffset}, ${colAxis}=${j+colOffset}] = ${values[i][j].toFixed(4)}`;rect.appendChild(tip);g.appendChild(rect);cells.push(rect);if(['Pa','Pm','A','M'].includes(name)||/^reduce[12]-sum$/.test(key)){rect.style.cursor='pointer';rect.addEventListener('click',()=>{inlineDetail.select(i,j);pause();});}}
   txt(g,w/2,h+15,`${rows} × ${cols}`,'matrix-shape');if(opts.sub)txt(g,w/2,h+30,opts.sub,'matrix-sub');parent.appendChild(g);
-  const m={g,key,values,x,y,cell,w,h,rows,cols,cells,title,born:opts.born??-1,weight:!!opts.weight};if(opts.heads)for(let i=2;i<cols;i+=2)g.appendChild(el('line',{x1:i*cell,x2:i*cell,y1:0,y2:h,stroke:'#fff','stroke-width':2}));return m;
+  const m={g,key,values,x,y,cell,w,h,rows,cols,cells,title,born:opts.born??-1,weight:!!opts.weight,revealStart:opts.revealStart,revealDuration:opts.revealDuration};if(opts.heads)for(let i=2;i<cols;i+=2)g.appendChild(el('line',{x1:i*cell,x2:i*cell,y1:0,y2:h,stroke:'#fff','stroke-width':2}));return m;
  }
  function clone(m,p){p.replaceChildren(...[...m.g.children].filter(n=>['rect','line'].includes(n.tagName.toLowerCase())).map(n=>n.cloneNode(true)));}
  const pos=m=>({x:m.x,y:m.y,w:m.w,h:m.h});
@@ -263,8 +187,8 @@ window.TPDimensionView=function(data){
  }
  function arrow(parent,x1,y1,x2,y2){parent.appendChild(el('path',{d:`M ${x1} ${y1} L ${x2} ${y2}`,fill:'none',stroke:'#cbc2d7','stroke-width':1.5,'marker-end':'url(#flow-arrow)'}));}
  function mount(){
-  svg=el('svg',{class:'board',viewBox:'0 0 1360 692',role:'img','aria-label':'向右连续滚动的完整 Transformer block。两条 GPU 泳道贯穿 Attention、残差、MLP 和输出；每个阶段保留在固定的流程位置。'});
-  svg.innerHTML='<title>完整 Transformer Block · 向右连续推进</title><defs><clipPath id="world-clip"><rect x="84" y="135" width="1250" height="495" rx="8"/></clipPath><marker id="flow-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 8 4 L 0 8" fill="#bfb4ce"/></marker></defs><rect class="global-band" width="1360" height="125"/>';
+  svg=el('svg',{class:'board',viewBox:'0 0 1360 816',role:'img','aria-label':'向右连续滚动的完整 Transformer block。两条 GPU 泳道贯穿 Attention、残差、MLP 和输出；每个阶段保留在固定的流程位置。'});
+  svg.innerHTML='<title>完整 Transformer Block · 向右连续推进</title><defs><clipPath id="world-clip"><rect x="84" y="135" width="1250" height="619" rx="8"/></clipPath><marker id="flow-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 8 4 L 0 8" fill="#bfb4ce"/></marker></defs><rect class="global-band" width="1360" height="125"/>';
   txt(svg,25,21,'完整 block · 一条向右延伸的计算流程','global-label','start');txt(svg,1335,21,'TP = 2 · T = 3 · D = 8 · F = 16 · 4 heads','global-sub','end');
   for(let i=0;i<plan.length;i++){const g=el('g',{'data-flow-step':i,role:'button',tabindex:0,'aria-label':`跳到 ${plan[i][1]}`}),x=25+i*88;g.innerHTML=`<rect x="${x}" y="39" width="84" height="31" rx="5" fill="#faf9fc" stroke="#e1d9ec"/>`;txt(g,x+42,59,plan[i][1],'flow-label');g.style.cursor='pointer';const go=()=>{following=true;$('follow').checked=true;seek(i);};g.addEventListener('click',go);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});svg.appendChild(g);rail.push(g);if(i<14)txt(svg,x+86,59,'›','global-sub');}
   txt(svg,25,98,'视野','global-sub','start');svg.appendChild(el('rect',{x:84,y:86,width:1250,height:16,rx:5,fill:'#f1edf7'}));
@@ -273,9 +197,7 @@ window.TPDimensionView=function(data){
   txt(svg,84,118,'左侧保留已完成的计算，右侧接着展开；小地图可定位当前视野。','global-sub','start');
   for(let r=0;r<2;r++){const y=cy[r];svg.appendChild(el('rect',{class:'gpu-shell',x:84,y:y-94,width:1250,height:194,rx:10}));txt(svg,45,y-5,'GPU','gpu-label');txt(svg,45,y+20,String(r),'gpu-label').style.fill=owner(r);}
   const clip=el('g',{'clip-path':'url(#world-clip)'});svg.appendChild(clip);scene=el('g',{id:'pipeline-world'});clip.appendChild(scene);
-  txt(scene,680,159,'SELF-ATTENTION · 列切 → heads → 行切 → 求和 → 残差','section-label');
-  txt(scene,2880,159,'MLP · 列切 → GeLU → 行切 → 求和 → 残差','section-label');
-  scene.appendChild(el('line',{x1:2220,x2:2220,y1:140,y2:625,stroke:'#ded6e8','stroke-dasharray':'5 5'}));
+  scene.appendChild(el('line',{x1:2220,x2:2220,y1:140,y2:749,stroke:'#ded6e8','stroke-dasharray':'5 5'}));
   for(let r=0;r<2;r++){
    const node=el('g',{'data-gpu':r}),d=data.gpu[r],y=cy[r]+8,l={node,r,mats:[]};scene.appendChild(node);locals.push(l);
    const add=(key,values,x,cell,opts={})=>{const m=mat(node,`gpu${r}-${key}`,values,x,opts.y??y,cell,opts);l.mats.push(m);return m;};
@@ -287,67 +209,68 @@ window.TPDimensionView=function(data){
    l.n1=add('N1',data.N1,330,9,{title:'N₁ = LN₁(X₀)',born:1,sub:'本地归一化'});
    l.weights=[];l.qkv=[];for(const [j,k]of ['q','k','v'].entries()){
     l.weights.push(add('W'+k,d['w'+k],500+j*40,5.5,{title:'W_'+k.toUpperCase()+'ᵢ',weight:true,fill:owner(r),heads:true}));
-    l.qkv.push(add(k,d[k],680+j*45,7,{title:k.toUpperCase()+'ᵢ',born:2,fill:owner(r),heads:true}));
+    l.qkv.push(add(k,d[k],680+j*45,7,{title:k.toUpperCase()+'ᵢ',born:2,fill:owner(r),heads:true,revealStart:.68,revealDuration:.27}));
    }
    txt(node,540,y+63,'列切 · 每 GPU 2 heads','matrix-sub');
    l.heads=[];for(let h=0;h<2;h++){
-    const dh=d.heads[h],hy=y+(h===0?-18:50),s=add(`head${h}-score`,dh.score,965,8,{y:hy,title:'H'+(r*2+h)+' · QKᵀ/√d',born:3,fill:owner(r)}),p=add(`head${h}-P`,dh.p,1140,8,{y:hy,title:'H'+(r*2+h)+' · Softmax',born:4,fill:owner(r)}),o=add(`head${h}-O`,dh.o,1240,8,{y:hy,title:'O_'+(r*2+h),born:4,fill:owner(r)});
-    l.heads.push({s,p,o});arrow(node,995,hy,1108,hy);arrow(node,1160,hy,1222,hy);
+    const dh=d.heads[h],hy=y+(h===0?-18:50),s=add(`head${h}-score`,dh.score,965,8,{y:hy,title:'H'+(r*2+h)+' · QKᵀ/√d',born:3,fill:owner(r),revealStart:.7,revealDuration:.25}),p=add(`head${h}-P`,dh.p,1140,8,{y:hy,title:'H'+(r*2+h)+' · Softmax',born:4,fill:owner(r)}),o=add(`head${h}-O`,dh.o,1240,8,{y:hy,title:'O_'+(r*2+h),born:4,fill:h===0?owner(r):(r===0?'#86b7da':'#84c6b6')});
+    const q=add(`head${h}-Q`,dh.q,865,9,{y:hy,title:'Q_h'+(r*2+h),born:3,fill:h===0?owner(r):(r===0?'#86b7da':'#84c6b6'),revealStart:.4,revealDuration:.23});l.heads.push({q,s,p,o});arrow(node,995,hy,1108,hy);arrow(node,1160,hy,1222,hy);
    }
-   l.o=add('O',d.o,1360,9,{title:'本地 Oᵢ',born:4,fill:owner(r),sub:'拼接本地 heads',heads:true});
+   l.o=add('O',d.o,1360,9,{title:'本地 Oᵢ',born:4,fill:(i,j)=>j<2?owner(r):(r===0?'#86b7da':'#84c6b6'),sub:'本地 2+2 列拼接',heads:true,revealStart:.78,revealDuration:.17});
    l.wo=add('WO',d.wo,1510,8,{title:'W_Oᵢ · 行切',weight:true,fill:owner(r)});
-   l.pa=add('Pa',d.a,1650,9,{title:'部分和 Pᵃᵢ',born:5,fill:owner(r),sub:'完整形状 · 尚未求和'});
-   l.a=add('A',data.A,1980,9,{title:'完整 A = ΣPᵃᵢ',born:6,fill:'var(--sum)',sub:'每 GPU 相同'});
+   l.pa=add('Pa',d.a,1650,9,{title:'部分和 Pᵃᵢ',born:5,fill:owner(r),sub:'完整形状 · 尚未求和',revealStart:.68,revealDuration:.27});
+   l.a=add('A',data.A,1980,9,{title:'完整 A = ΣPᵃᵢ',born:6,fill:'var(--sum)',sub:'每 GPU 相同',revealStart:.84,revealDuration:.11});
    l.r=add('R',data.R,2140,9,{title:'R = X₀ + A',born:7,fill:'var(--sum)',sub:'第一条残差'});
    l.n2=add('N2',data.N2,2350,9,{title:'N₂ = LN₂(R)',born:8,sub:'直接接入 MLP'});
    l.wu=add('WU',d.wu,2540,8,{title:'W_upᵢ · 列切',weight:true,fill:owner(r),sub:`输出列 ${r*8}…${r*8+7}`});
-   l.z=add('Z',d.z,2710,9,{title:'Zᵢ = N₂ W_upᵢ',born:9,fill:owner(r)});
+   l.z=add('Z',d.z,2710,9,{title:'Zᵢ = N₂ W_upᵢ',born:9,fill:owner(r),revealStart:.68,revealDuration:.27});
    l.h=add('H',d.h,2890,9,{title:'Hᵢ = GeLU(Zᵢ)',born:10,fill:owner(r),sub:'保持特征分片'});
    l.wd=add('WD',d.wd,3060,8,{title:'W_downᵢ · 行切',weight:true,fill:owner(r),sub:`输入行 ${r*8}…${r*8+7}`});
-   l.pm=add('Pm',d.m,3210,9,{title:'部分和 Pᵐᵢ',born:11,fill:owner(r),sub:'完整形状 · 尚未求和'});
-   l.m=add('M',data.M,3530,9,{title:'完整 M = ΣPᵐᵢ',born:12,fill:'var(--sum)',sub:'每 GPU 相同'});
+   l.pm=add('Pm',d.m,3210,9,{title:'部分和 Pᵐᵢ',born:11,fill:owner(r),sub:'完整形状 · 尚未求和',revealStart:.68,revealDuration:.27});
+   l.m=add('M',data.M,3530,9,{title:'完整 M = ΣPᵐᵢ',born:12,fill:'var(--sum)',sub:'每 GPU 相同',revealStart:.84,revealDuration:.11});
    l.y=add('Y',data.Y,3690,9,{title:'Y = R + M',born:13,fill:'var(--sum)',sub:'完整 block 输出'});
   }
   for(const [i,x]of [1820,3370].entries()){
-   const g=el('g',{'data-collective':i+1});g.innerHTML=`<rect x="${x-78}" y="335" width="156" height="156" rx="10" fill="var(--soft)" stroke="#c8b3e0"/>`;scene.appendChild(g);
-   txt(g,x,357,'AllReduce '+(i+1),'comm-label');const sign=txt(g,x,414,'+','operator'),result=mat(g,`reduce${i+1}-sum`,i===0?data.A:data.M,x,406,8,{title:'',fill:'var(--sum)'});result.title.textContent='';result.g.querySelector('.matrix-shape').setAttribute('opacity',0);txt(g,x,480,'逐元素相加 · 逻辑集合操作','matrix-sub');hubs.push({g,sign,result,x});
-   for(let r=0;r<2;r++){const l=locals[r],from=i===0?l.pa:l.pm,to=i===0?l.a:l.m;arrow(scene,from.x+40,from.y,x-78,405+(r===0?-10:10));arrow(scene,x+78,405+(r===0?-10:10),to.x-42,to.y);}
+   const g=el('g',{'data-collective':i+1});g.innerHTML=`<rect x="${x-78}" y="459" width="156" height="156" rx="10" fill="var(--soft)" stroke="#c8b3e0"/>`;scene.appendChild(g);
+   txt(g,x,481,'AllReduce '+(i+1),'comm-label');const sign=txt(g,x,538,'+','operator'),result=mat(g,`reduce${i+1}-sum`,i===0?data.A:data.M,x,530,12,{title:'',fill:'var(--sum)'});result.title.textContent='';result.g.querySelector('.matrix-shape').setAttribute('opacity',0);const note=txt(g,x,604,'同坐标逐格相加','matrix-sub');hubs.push({g,sign,result,x,note});
+   for(let r=0;r<2;r++){const l=locals[r],from=i===0?l.pa:l.pm,to=i===0?l.a:l.m;arrow(scene,from.x+40,from.y,x-78,529+(r===0?-10:10));arrow(scene,x+78,529+(r===0?-10:10),to.x-42,to.y);}
   }
   const overlay=el('g',{id:'motion-layer','aria-hidden':'true','pointer-events':'none'});scene.appendChild(overlay);for(let i=0;i<24;i++){const p=el('g',{'data-packet':i,opacity:0});overlay.appendChild(p);packets.push(p);}
   for(let r=0;r<2;r++)for(let b=0;b<2;b++){const p=el('g',{'data-residual-packet':`${r}-${b}`,opacity:0});overlay.appendChild(p);clone(b===0?locals[r].x:locals[r].r,p);skips.push({p,r,b});}
-  txt(svg,25,655,'','phase-heading','start').id='phase-heading';txt(svg,25,679,'','phase-note','start').id='phase-note';$('board-wrap').replaceChildren(svg);$('position').max=plan.length;$('view-position').max=MAX_CAMERA;dimensionView=window.TPDimensionView(data);
+  txt(svg,25,779,'','phase-heading','start').id='phase-heading';txt(svg,25,803,'','phase-note','start').id='phase-note';$('board-wrap').replaceChildren(svg);$('position').max=plan.length;$('view-position').max=MAX_CAMERA;inlineDetail=window.createInlineTensorDetails({scene,locals,hubs,data,mat,el,txt,clone,fly,cy});
  }
  function prepare(index){
   packets.forEach(p=>{p.replaceChildren();p.setAttribute('opacity',0);});moves=[];
-  const add=(m,to,start=.05,end=.68,bend=12)=>{const packet=packets[moves.length];clone(m,packet);moves.push({m,to,packet,start,end,bend});};
+  const add=(m,to,start=.05,end=.68,bend=12,scale=1)=>{const packet=packets[moves.length];clone(m,packet);moves.push({m,to,packet,start,end,bend,scale});};
   for(const l of locals){
    if(index===1)add(l.x,l.n1);
-   if(index===2)l.qkv.forEach((q,j)=>add(l.n1,{...pos(q),x:q.x-45},.05+j*.06,.56+j*.06));
-   if(index===3)l.heads.forEach((h,j)=>add(l.qkv[j],h.s));
-   if(index===4){l.heads.forEach(h=>{add(h.s,h.p,.02,.38,0);add(h.p,h.o,.4,.7,0);add(h.o,l.o,.68,.94,0);});}
-   if(index===5)add(l.o,{...pos(l.wo),x:l.wo.x-5});
+   if(index===2)l.qkv.forEach((q,j)=>add(l.n1,{...pos(q),x:q.x-45},.6+j*.025,.86+j*.025));
+
+   if(index===4){l.heads.forEach(h=>{add(h.s,h.p,.02,.38,0);add(h.p,h.o,.4,.7,0);add(h.o,{x:l.o.x+(l.heads.indexOf(h)===0?-1:1)*l.o.w/4,y:l.o.y},.68,.94,0,l.o.cell/h.o.cell);});}
+   if(index===5)add(l.o,{...pos(l.wo),x:l.wo.x-5},.61,.86);
    if(index===7)add(l.a,l.r,.05,.68,0);
    if(index===8)add(l.r,l.n2,.04,.66,0);
-   if(index===9)add(l.n2,{...pos(l.wu),x:l.wu.x-5});
+   if(index===9)add(l.n2,{...pos(l.wu),x:l.wu.x-5},.61,.86);
    if(index===10)add(l.z,l.h,.05,.67,0);
-   if(index===11)add(l.h,{...pos(l.wd),x:l.wd.x-5});
+   if(index===11)add(l.h,{...pos(l.wd),x:l.wd.x-5},.61,.86);
    if(index===13)add(l.m,l.y,.05,.68,0);
   }
   if(index===6||index===12){const h=hubs[index===6?0:1];for(let r=0;r<2;r++){
-   const l=locals[r],from=index===6?l.pa:l.pm,to=index===6?l.a:l.m;add(from,{x:h.x,y:405+(r===0?-23:23)},.05,.46,0);add(h.result,to,.59,.93,0);
+   const l=locals[r],from=index===6?l.pa:l.pm,to=index===6?l.a:l.m;add(h.result,to,.63,.94,0,to.cell/h.result.cell);
   }}
  }
  function paint(){
-  const done=time>=plan.length,index=done?14:Math.floor(time),p=done?1:time-index;dimensionView.update(index,p);
+  const done=time>=plan.length,index=done?14:Math.floor(time),p=done?1:time-index;
   if(following){const f=focus[index]+((focus[index+1]??focus[index])-focus[index])*p;camera=clamp(f-555,0,MAX_CAMERA);}
   scene.setAttribute('transform',`translate(${84-camera},0)`);scene.dataset.camera=camera;viewWindow.setAttribute('x',84+camera/WORLD*1250);$('view-position').value=String(camera);
-  for(const l of locals)for(const m of l.mats){const complete=m.born<index,active=m.born===index,amount=clamp((p-(index===4?.15:.42))/.46);m.g.setAttribute('opacity',m.weight?.88:complete?1:active?1:.22);m.cells.forEach((c,k)=>c.setAttribute('fill-opacity',complete||m.weight?.8:active&&k%m.cols<amount*m.cols?.8:.1));m.g.dataset.completed=String(complete||active&&p>=.9);m.title.style.fill=active?'var(--purple)':'';}
+  for(const l of locals)for(const m of l.mats){const complete=m.born<index,active=m.born===index,amount=clamp((p-(m.revealStart??(index===4?.15:.42)))/(m.revealDuration??.46));m.g.setAttribute('opacity',m.weight?.88:complete?1:active?1:.22);m.cells.forEach((c,k)=>c.setAttribute('fill-opacity',complete||m.weight?.8:active&&k%m.cols<amount*m.cols?.8:.1));m.g.dataset.completed=String(complete||active&&amount>=1);m.title.style.fill=active?'var(--purple)':'';}
   if(index!==lastStep){prepare(index);lastStep=index;}
-  for(const movement of moves){const{m,to,packet,start,end,bend}=movement,q=clamp((p-start)/(end-start)),visible=p>start&&p<end;const alpha=visible?Math.min(clamp((p-start)/.07),clamp((end-p)/.07)):0;if(m.key.startsWith('reduce')){const midway={x:m.x+110,y:m.y};fly(packet,q<.5?pos(m):{...pos(m),...midway},q<.5?midway:to,q<.5?q*2:(q-.5)*2,alpha,0);}else fly(packet,pos(m),to,q,alpha,bend);}
-  for(let i=0;i<hubs.length;i++){const phase=i===0?6:12,h=hubs[i],active=index===phase;h.g.setAttribute('opacity',index>=phase?1:.35);h.sign.setAttribute('opacity',active&&p>.35&&p<.64?1:0);h.result.g.setAttribute('opacity',index>phase||active&&p>.57?1:0);}
+  for(const movement of moves){const{m,to,packet,start,end,bend,scale}=movement,q=clamp((p-start)/(end-start)),visible=p>start&&p<end;const alpha=visible?Math.min(clamp((p-start)/.07),clamp((end-p)/.07)):0;if(m.key.startsWith('reduce')){const midway={x:m.x+110,y:m.y};fly(packet,q<.5?pos(m):{...pos(m),...midway},q<.5?midway:to,q<.5?q*2:(q-.5)*2,alpha,0,1+(scale-1)*q);}else fly(packet,pos(m),to,q,alpha,bend,1+(scale-1)*q);}
+  for(let i=0;i<hubs.length;i++){const phase=i===0?6:12,h=hubs[i],active=index===phase;h.g.setAttribute('opacity',index>=phase?1:.35);h.sign.setAttribute('opacity',active&&p>.34&&p<.46?1:0);h.result.g.setAttribute('opacity',index>phase||active&&p>.57?1:0);}
   for(const {p:packet,r,b}of skips){const from=b===0?130:2140,to=b===0?2140:3690,start=b===0?.45:7.75,end=b===0?7.78:13.78,q=clamp((time-start)/(end-start)),visible=time>start&&time<end,y=cy[r]+8;
    const x=from+(to-from)*q,offset=q<.06?73*q/.06:q>.92?73*(1-q)/.08:73;fly(packet,{x,y:y-offset,w:72,h:27},{x,y:y-offset},0,visible?.9:0,0,.65);packet.dataset.worldX=x;
   }
+  inlineDetail.update(index,p);
   rail.forEach((g,i)=>{g.querySelector('rect').setAttribute('fill',i===index?'var(--soft)':i<index?'#f1edf7':'#faf9fc');g.querySelector('rect').setAttribute('stroke',i===index?'#a88bce':'#e1d9ec');g.querySelector('text').style.fill=i===index?'var(--purple)':'var(--muted)';});
   $('comm-count').textContent=`已完成前向通信：${(time>=6.95?1:0)+(time>=12.95?1:0)} / 2 次 AllReduce`;
   $('phase-heading').textContent=`${index+1}. ${plan[index][1]}`;$('phase-note').textContent=plan[index][2];if(captionKey!==String(index)){$('caption-text').textContent=plan[index][2];$('caption-en').textContent=plan[index][3];captionKey=String(index);}
@@ -359,10 +282,8 @@ window.TPDimensionView=function(data){
  function play(target=15){if(time>=15)time=0;stopAt=target;playing=true;lastStamp=null;paint();raf=requestAnimationFrame(tick);}
  $('play').addEventListener('click',()=>playing?pause():play());$('next').addEventListener('click',()=>{pause();play(Math.min(15,Math.floor(time+1e-6)+1));});$('back').addEventListener('click',()=>seek(Math.max(0,Math.ceil(time-1e-6)-1)));$('reset').addEventListener('click',()=>{following=true;$('follow').checked=true;seek(0);});$('result').addEventListener('click',()=>{following=true;$('follow').checked=true;seek(15);});$('position').addEventListener('input',e=>seek(e.target.value));
  $('follow').addEventListener('change',e=>{following=e.target.checked;paint();});$('view-position').addEventListener('input',e=>{const requested=Number(e.target.value);pause();following=false;$('follow').checked=false;camera=requested;paint();});document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
- window.TensorBlockLab={seek,pause,play:()=>play(),get time(){return time;},get playing(){return playing;},get camera(){return camera;},get following(){return following;},get plan(){return plan;},get dimensions(){return dimensionView;},data};mount();paint();
+ window.TensorBlockLab={seek,pause,play:()=>play(),get time(){return time;},get playing(){return playing;},get camera(){return camera;},get following(){return following;},get plan(){return plan;},get dimensions(){return inlineDetail;},data};mount();paint();
 })();
-
-document.querySelectorAll("[data-dimension-seek]").forEach(button=>button.addEventListener("click",()=>{document.getElementById("follow").checked=true;document.getElementById("follow").dispatchEvent(new Event("change"));TensorBlockLab.seek(Number(button.dataset.dimensionSeek));}));
 
 </script>
 </body>
