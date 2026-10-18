@@ -31,9 +31,9 @@
 <p>Watch activations move forward and gradients return backward across four GPU stages. Compare GPipe and synchronous 1F1B, follow retained activations and pipeline bubbles, and see all stages update their weights together after the complete mini-batch.</p>
 <ul class="topics"><li>Forward and backward data flow</li><li>GPipe versus synchronous 1F1B</li><li>Activation lifetime and pipeline bubbles</li></ul>
 <div class="resource-actions"><a class="open-demo" href="demos/pipeline-parallelism.html">Open demo →</a></div></article>
-<article class="resource" aria-labelledby="tensor-title"><div class="resource-heading"><span class="resource-number">05</span><div><p class="resource-type">Interactive demo · Tensor parallelism</p><h3 id="tensor-title"><a href="demos/tensor-parallelism.html">Tensor Parallelism in Transformers: Matrix Shards and GPU Collectives</a></h3></div></div>
-<p>Follow matrix shards into two GPUs and watch local computation and communication. Compare column-then-row and row-then-column MLP partitions, distinguish AllReduce sums from AllGather concatenation, and explore head-parallel self-attention with a row-sharded output projection.</p>
-<ul class="topics"><li>Column versus row partitioning</li><li>MLP and attention heads</li><li>SUM versus concatenation</li></ul>
+<article class="resource" aria-labelledby="tensor-title"><div class="resource-heading"><span class="resource-number">05</span><div><p class="resource-type">Interactive demo · Tensor parallelism</p><h3 id="tensor-title"><a href="demos/tensor-parallelism.html">Tensor Parallelism: One Complete Transformer Block</a></h3></div></div>
+<p>Follow one continuous pre-LN Transformer block from input to output across two GPUs: LayerNorm, head-parallel attention, the first AllReduce and residual, the MLP, and the second AllReduce and residual. Pause at any point to inspect the matrices and both residual paths.</p>
+<ul class="topics"><li>Complete Transformer forward pass</li><li>Column and row weight shards</li><li>Two AllReduces and residual paths</li></ul>
 <div class="resource-actions"><a class="open-demo" href="demos/tensor-parallelism.html">Open demo →</a></div></article>
 </div></section></main>
 <div id="footer"><div id="footer-text"><a href="../index.html">Han Tian · Home</a></div></div></td></tr></table>

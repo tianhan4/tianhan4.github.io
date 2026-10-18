@@ -2,26 +2,26 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Animate Transformer tensor parallelism: column and row matrix shards, MLP partition-order comparison, attention head parallelism, and the difference between AllReduce sums and AllGather concatenation.">
-<title>Tensor Parallelism · Transformer 矩阵分块动画</title>
+<meta name="description" content="One continuous pre-LN Transformer block forward pass with tensor parallelism: LayerNorm, attention heads, two AllReduce sums, residuals, and the MLP.">
+<title>Transformer Block · 完整张量并行动画</title>
 <style>
 :root{color-scheme:light;--bg:#f5f4f8;--paper:#fff;--ink:#282437;--muted:#706a80;--line:#e1dce9;--purple:#6540a4;--soft:#eee8f8;--g0:#2979b5;--g1:#148578;--t0:#e6f2fa;--t1:#e4f4ef;--sum:#8054b3;--sum-soft:#eee7f7;--neutral:#e9e5f0;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.5}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}a{color:var(--purple)}button,input,select{font:inherit}button{border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);padding:7px 12px;min-height:36px;cursor:pointer}button:hover:not(:disabled){background:var(--soft)}button:disabled{opacity:.4;cursor:default}button.primary{background:var(--purple);border-color:var(--purple);color:white}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #a17cdb;outline-offset:3px}select{border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);padding:6px 8px}.shell{max-width:1480px;margin:auto;padding:16px 25px 25px}.course-nav{font-size:12px;margin-bottom:12px}.course-nav a{text-decoration:none}header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:13px}h1{margin:0;font-size:26px;letter-spacing:-.025em;font-weight:650}.heading-en{font-size:13px;color:var(--muted)}.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:11px}.mode{text-align:left;padding:10px 13px}.mode strong{font-size:14px;font-weight:600}.mode span{display:block;font-size:12px;color:var(--muted);margin-top:2px}.mode[aria-pressed=true]{background:var(--soft);border-color:#bca4dc}.controls{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 13px 9px;margin-bottom:10px}.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.toolbar label{display:flex;gap:7px;align-items:center;margin-left:auto;font-size:12px;color:var(--muted)}.progress-row{display:flex;align-items:center;gap:9px;margin-top:9px;font-size:12px;color:var(--muted)}.progress-row input{flex:1;min-width:70px;accent-color:var(--purple)}.progress-row output{min-width:77px;text-align:right;font-variant-numeric:tabular-nums}.legend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:0 2px 10px}.legend i{width:10px;height:10px;display:inline-block;border-radius:2px;background:var(--g0);margin-right:5px;vertical-align:middle}.legend .gpu1 i{background:var(--g1)}.legend .sum i{background:var(--sum)}.legend .axes{margin-left:auto}.stage{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}.board-wrap{overflow:hidden}.board{width:100%;height:auto;display:block}.board text{font-family:Inter,"PingFang SC",system-ui,sans-serif;fill:var(--ink)}.global-band{fill:#fcfbfe}.global-label{font-size:12px;font-weight:550}.global-sub{font-size:10px;fill:var(--muted)!important}.gpu-shell{fill:#faf9fc;stroke:var(--line);stroke-width:1.5}.gpu-label{font-size:16px;font-weight:600}.gpu-note{font-size:11px;fill:var(--muted)!important}.matrix-title{font-size:12px;font-weight:550}.matrix-shape{font-size:10px;fill:var(--muted)!important}.matrix-sub{font-size:10px;fill:var(--muted)!important}.operator{font-size:19px;fill:#91869f!important}.small-op{font-size:11px;fill:var(--muted)!important}.comm-label{font-size:15px;font-weight:600;fill:var(--purple)!important}.comm-small{font-size:11px;fill:var(--muted)!important}.phase-heading{font-size:14px;font-weight:600;fill:var(--purple)!important}.phase-note{font-size:12px;fill:var(--muted)!important}.head-label{font-size:10px;font-weight:550}.phase-track{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding:9px 14px;background:#fcfbfe}.phase-item{font-size:11px;color:var(--muted);padding:3px 7px;border-radius:4px;background:#f2eff7}.phase-item.active{background:var(--soft);color:var(--purple)}.caption{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:11px 15px;border-top:1px solid var(--line);font-size:13px}.caption .en{font-size:12px;color:var(--muted);margin:3px 0 0}.comm-count{font-size:12px;color:var(--purple)}.footnote{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.75}.footnote summary{cursor:pointer}.footnote p{margin:8px 0 0}.footer{font-size:11px;color:var(--muted);margin-top:8px}.footer a{margin-right:14px}
 @media(max-width:760px){.shell{padding:12px 10px 22px}h1{font-size:21px}header{gap:3px}.heading-en{font-size:12px}.modes{grid-template-columns:1fr}.mode{padding:8px 11px}.mode span{display:inline;margin-left:9px;font-size:11px}.toolbar button{font-size:12px;padding:7px 9px}.toolbar label{margin-left:0}.legend{font-size:11px;gap:9px}.legend .axes{margin-left:0;width:100%}.board-wrap{overflow-x:auto}.board{min-width:1120px}.caption .en{font-size:11px}.progress-row{font-size:11px}}
 </style>
-</head>
+<style>.flow-label{font-size:10px;font-weight:550}.residual-plus{font-size:24px;font-weight:600}.overview-note{font-size:12px;color:var(--muted);margin:0 2px 11px}.controls{margin-top:12px}</style></head>
 <body>
 <main class="shell">
 <nav class="course-nav" aria-label="Course navigation"><a href="https://tianhan4.github.io/courses/">← Courses · Software Optimization for Intelligent Computing</a></nav>
-<header><h1>Tensor Parallelism · Transformer 矩阵分块</h1><div class="heading-en" lang="en">2 GPUs · MLP &amp; multi-head self-attention</div></header>
-<div class="modes" role="group" aria-label="并行方式 Tensor parallelism examples"><button type="button" class="mode" data-mode="column" aria-pressed="true"><strong>MLP：先列 → 后行</strong><span>推荐 · 中间激活直接接上第二层</span></button><button type="button" class="mode" data-mode="row" aria-pressed="false"><strong>MLP：先行 → 后列</strong><span>对照 · 先求和才能做 GeLU</span></button><button type="button" class="mode" data-mode="attention" aria-pressed="false"><strong>Self-Attention：按头并行</strong><span>Q/K/V 列切分 → 输出投影行切分</span></button></div>
-<section class="controls" aria-label="动画控制 Animation controls"><div class="toolbar"><button type="button" id="play" class="primary" aria-pressed="false">▶ 播放 Play</button><button type="button" id="back">← 上一步 Back</button><button type="button" id="next">播放一步 One step →</button><button type="button" id="reset">↺ 回到开始 Reset</button><button type="button" id="result">最终结果 Result</button><label for="speed">速度 Speed <select id="speed"><option value="6000">慢速 Slow</option><option value="4300" selected>标准 Normal</option><option value="2600">快速 Fast</option></select></label></div><div class="progress-row"><label for="position">过程 Progress</label><input type="range" id="position" min="0" max="6" value="0" step="0.001"><output id="position-label" for="position"></output></div></section>
-<div class="legend"><span><i></i>GPU 0 的分片</span><span class="gpu1"><i></i>GPU 1 的分片</span><span class="sum"><i></i>跨 GPU 求和后的完整结果</span><span class="axes">按 Y = XW 画权重：行＝输入特征，列＝输出特征</span></div>
-<section class="stage" aria-label="矩阵分块、局部计算与通信动画 Matrix partition and communication animation"><div class="board-wrap" id="board-wrap"></div><div class="phase-track" id="phase-track"></div><div class="caption" aria-live="polite"><div><div id="caption-text"></div><div class="en" id="caption-en" lang="en"></div></div><div class="comm-count" id="comm-count"></div></div></section>
-<details class="footnote"><summary>维度、切分方向与通信口径 · Assumptions</summary><p>本例仅演示前向。T=3 表示 3 个 token；隐藏维 D=8，MLP 中间维 F=16（教学用小尺寸），标准 MHA 为 4 个 head、每头 2 维。所有 GPU 都处理完整的 token 序列，只切特征维 / head，未使用 sequence parallelism、GQA 或 MQA。输入 X 起始已在两个 GPU 上复制；权重分发动画说明模型布局，不计作每步的额外 Broadcast。</p><p>权重统一按 [输入维, 输出维] 显示，所以矩阵右乘 XW；PyTorch Linear 常以 [输出维, 输入维] 保存权重，阅读实际权重张量时应考虑转置。先列后行得到同形状的部分和，最后做 AllReduce SUM；对照方案先行后列必须在 GeLU 前求和，并在结尾用 AllGather 得到同样的复制输出。若允许输出继续分片，最后一次 AllGather 可以省略。</p><p>多头 Attention 的 Q/K/V 投影分别按完整 head 分组切列；同一 head 的 Q、K、V 在同一 GPU。各 head 的 score、逐行 Softmax、与 V 的乘法都在本地完成；同一 GPU 的 head 输出在本地拼接，不先把所有 GPU 的 head 聚齐。W_O 按与 head 对齐的行切分，最后将完整输出的部分和相加。示例省略 bias、dropout、mask、LayerNorm 和残差加法；输出 bias 应在求和后添加一次。</p><p>推荐 MLP 和 Attention 各有 1 次前向 AllReduce；因此经典 Transformer block 前向合计 2 次，反向另有 2 次。通信框是集合操作的逻辑示意，不代表某个中央 GPU 或固定网络拓扑。元素的颜色表示分片归属，悬停可查看示例数值。</p></details>
-<footer class="footer">Han Tian · Chapter 6 · <a href="https://arxiv.org/html/1909.08053" target="_blank" rel="noopener">Megatron-LM · tensor parallel Transformers</a><a href="https://arxiv.org/html/2104.04473v5" target="_blank" rel="noopener">Tensor / pipeline parallelism</a></footer>
+<header><h1>完整 Transformer Block · 张量并行</h1><div class="heading-en" lang="en">One continuous forward pass · Pre-LN · 2 GPUs</div></header>
+<section class="controls" aria-label="动画控制 Animation controls"><div class="toolbar"><button type="button" id="play" class="primary" aria-pressed="false">▶ 播放 Play</button><button type="button" id="back">← 上一步 Back</button><button type="button" id="next">播放一步 One step →</button><button type="button" id="reset">↺ 回到开始 Reset</button><button type="button" id="result">最终结果 Result</button><label for="speed">速度 Speed <select id="speed"><option value="5000">慢速 Slow</option><option value="3300" selected>标准 Normal</option><option value="1900">快速 Fast</option></select></label></div><div class="progress-row"><label for="position">过程 Progress</label><input type="range" id="position" min="0" max="15" value="0" step="0.001"><output id="position-label" for="position"></output></div></section>
+<div class="legend"><span><i></i>GPU 0 的特征 / head 分片</span><span class="gpu1"><i></i>GPU 1 的特征 / head 分片</span><span class="sum"><i></i>完整、复制的中间结果</span><span class="axes">权重按 [输入维, 输出维] 显示 · 先列后行</span></div>
+<section class="stage" aria-label="完整 Transformer block 的连续前向动画"><div class="board-wrap" id="board-wrap"></div><div class="caption" aria-live="polite"><div><div id="caption-text"></div><div class="en" id="caption-en" lang="en"></div></div><div class="comm-count" id="comm-count"></div></div></section>
+<details class="footnote"><summary>演示口径 · Pre-LN / complete forward pass</summary><p>这里演示同一个标准 Pre-LN block 的完整前向：N₁ = LN₁(X₀)，A = Attention(N₁)，R = X₀ + A，N₂ = LN₂(R)，M = MLP(N₂)，Y = R + M。后续 MLP 使用真实的 N₂，不重新从原始输入开始。两个 GPU 始终处理全部 3 个 token，只分特征 / head；隐藏维 D=8，中间维 F=16，4 个 heads，每头 2 维。</p><p>Q/K/V 分别按完整 head 切列，W_O 按对应输入行切分；MLP 的 W_up 切列，W_down 按对应输入行切分。中间激活直接匹配下一层的权重行，不需要 AllGather。两次 AllReduce 分别还原 Attention 输出和 MLP 输出；残差相加与 LayerNorm 都对复制的完整向量本地执行，无需额外通信。顶端分片图是常驻权重布局，主图突出当前运算，不表示训练中反复传输权重。</p><p>本例 LayerNorm 的 γ=1、β=0、ε=10⁻⁵；使用 GeLU 小型 MLP、无 mask 的标准 MHA，省略 bias 与 dropout（等价于 dropout 概率 0）。未使用 sequence parallelism、GQA/MQA，也未展示反向传播。权重按 XW 约定画 [输入维, 输出维]，与 PyTorch Linear 常见的转置存储方向相反。通信框表示逻辑集合操作，不代表一个中央 GPU。悬停矩阵元素可查看示例数值。</p></details>
+<footer class="footer">Han Tian · Chapter 6 · <a href="https://arxiv.org/html/1909.08053" target="_blank" rel="noopener">Megatron-LM · Transformer tensor parallelism</a></footer>
 </main>
 <script>
+
 const TensorEngine=(()=>{
  const matrix=(r,c,seed,scale=.2)=>Array.from({length:r},(_,i)=>Array.from({length:c},(_,j)=>(((i*7+j*11+seed*3)%17)-8)*scale));
  const cols=(a,s,e)=>a.map(r=>r.slice(s,e)),rows=(a,s,e)=>a.slice(s,e).map(r=>r.slice()),transpose=a=>a[0].map((_,j)=>a.map(r=>r[j]));
@@ -44,191 +44,171 @@ const TensorEngine=(()=>{
  return {matrix,cols,rows,transpose,mm,add,concat,activate,gelu,softmax,mlp,attention};
 })();
 window.TensorEngine=TensorEngine;
+const BlockEngine=(()=>{
+ const E=TensorEngine,layerNorm=a=>a.map(row=>{const mean=row.reduce((s,v)=>s+v,0)/row.length,variance=row.reduce((s,v)=>s+(v-mean)**2,0)/row.length;return row.map(v=>(v-mean)/Math.sqrt(variance+1e-5));});
+ function build(){
+  const X=E.matrix(3,8,1,.08),N1=layerNorm(X),WQ=E.matrix(8,8,4,.06),WK=E.matrix(8,8,5,.06),WV=E.matrix(8,8,6,.06),WO=E.matrix(8,8,7,.07),WU=E.matrix(8,16,2,.07),WD=E.matrix(16,8,3,.06);
+  const Q=E.mm(N1,WQ),K=E.mm(N1,WK),V=E.mm(N1,WV),heads=Array.from({length:4},(_,h)=>{const q=E.cols(Q,h*2,h*2+2),k=E.cols(K,h*2,h*2+2),v=E.cols(V,h*2,h*2+2),score=E.mm(q,E.transpose(k)).map(r=>r.map(x=>x/Math.sqrt(2))),p=E.softmax(score);return{q,k,v,score,p,o:E.mm(p,v)};});
+  const O=heads.map(h=>h.o).reduce(E.concat),A=E.mm(O,WO),R=E.add(X,A),N2=layerNorm(R),Z=E.mm(N2,WU),H=E.activate(Z),M=E.mm(H,WD),Y=E.add(R,M);
+  const gpu=Array.from({length:2},(_,r)=>{const o=E.concat(heads[r*2].o,heads[r*2+1].o),wo=E.rows(WO,r*4,r*4+4),wu=E.cols(WU,r*8,r*8+8),wd=E.rows(WD,r*8,r*8+8),z=E.mm(N2,wu),h=E.activate(z);return{wq:E.cols(WQ,r*4,r*4+4),wk:E.cols(WK,r*4,r*4+4),wv:E.cols(WV,r*4,r*4+4),q:E.cols(Q,r*4,r*4+4),k:E.cols(K,r*4,r*4+4),v:E.cols(V,r*4,r*4+4),heads:heads.slice(r*2,r*2+2),o,wo,a:E.mm(o,wo),wu,wd,z,h,m:E.mm(h,wd)};});
+  return{X,N1,WQ,WK,WV,WO,WU,WD,Q,K,V,heads,O,A,R,N2,Z,H,M,Y,gpu};
+ }
+ return{build,layerNorm};
+})();
+window.BlockEngine=BlockEngine;
 (()=>{
- const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
- const mlp=TensorEngine.mlp(),attn=TensorEngine.attention(),cy=[318,542],owner=r=>`var(--g${r})`,tint=r=>`var(--t${r})`;
- const steps={
-  column:[['shard','切列 / 切行','W_up 按列、W_down 按对应的行切分；每个 GPU 已有同一个 X。','Column-shard the first weight; row-shard the second.'],['linear1','第一层 GEMM','各 GPU 计算 X Aᵢ，得到不同的输出特征列 Zᵢ。','Each GPU computes different output columns.'],['activation','本地 GeLU','GeLU 逐元素计算：不同特征块可独立激活，中间无需通信。','GeLU stays local; no intermediate collective.'],['linear2','第二层 GEMM','Hᵢ 的特征列对齐 Bᵢ 的输入行。各 GPU 得到完整输出形状的部分和 Pᵢ。','Matching feature shards produce same-shaped partial sums.'],['reduce','AllReduce · 相加','P₀、P₁ 是相同位置的不同贡献，逐元素相加，并把完整 Y 交给每个 GPU。','AllReduce SUM, not concatenation.'],['result','复制输出','两个 GPU 都得到完整 Y；只用 1 次前向 AllReduce。','The full output is replicated on both GPUs.']],
-  row:[['shard','切行 / 切列','A 按输入行切分，X 取对应特征列；B 按输出列切分。','Row-shard A and column-shard B.'],['linear1','第一层部分和','Xᵢ Aᵢ 都覆盖全部 16 个输出特征，尚未相加，不能直接各自做 GeLU。','These are partial sums, not independent output features.'],['middleReduce','先 AllReduce','先将 Z₀ + Z₁ 相加，两个 GPU 都得到完整 Z。','Reduce the partial sums before the nonlinearity.'],['activation','再做 GeLU','GeLU(Z₀ + Z₁) 一般不等于 GeLU(Z₀) + GeLU(Z₁)。','The nonlinearity cannot be moved before the sum.'],['linear2','第二层不同列','每个 GPU 用完整 H 乘 B 的不同列，得到不重叠的输出列 Yᵢ。','Each GPU now computes disjoint output columns.'],['gather','AllGather · 拼接','把不同的输出列沿列方向拼起来，并让每个 GPU 都持有完整 Y。','AllGather concatenates disjoint columns; it does not sum.'],['result','复制输出','与推荐方案结果相同，但本演示多用了 1 次 AllGather 来恢复复制输出。','Same replicated output, with an extra AllGather.']],
-  attention:[['shard','按完整 Head 分块','Q/K/V 权重分别按列分组；GPU 0 负责 Head 0、1，GPU 1 负责 Head 2、3。','Column-shard Q/K/V by complete attention heads.'],['project','本地 Q / K / V','每个 GPU 用完整 token 序列的 X，计算自己 heads 的 Q、K、V。','All tokens stay local; feature/head columns are sharded.'],['score','每头计算 QKᵀ','同一 head 的 Q、K 都在本 GPU，独立算出 3×3 的 attention score。','Each head computes its own token-to-token scores.'],['context','Softmax × V','每头本地做逐行 Softmax，再乘本头 V；只在本 GPU 拼接两个 head 的输出 Oᵢ。','Softmax and V stay local; local head concatenation needs no collective.'],['linear2','输出投影按行切','Oᵢ 的 head 特征与 W_Oᵢ 的输入行对齐，计算完整输出的部分和 Pᵢ。','Row-sharded output projection produces partial sums.'],['reduce','AllReduce · 相加','两个 GPU 的 Pᵢ 逐元素相加，得到完整 Attention 输出 Y。','One AllReduce after the output projection.'],['result','复制输出','Q/K/V 与 head 内计算不需要中间跨 GPU 通信；最后一次求和即可。','Head-local attention, followed by one output AllReduce.']]
- };
- let mode='column',time=0,playing=false,raf=null,lastStamp=null,stopAt=0,svg,matrices={},globalMats={},locals=[],packets=[],hub,hubResult,phaseKey='',drawStep=-1;
- const svgEl=(tag,attrs={})=>{const el=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))el.setAttribute(k,String(v));return el;};
- function text(parent,x,y,value,cls='matrix-title',anchor='middle'){const e=svgEl('text',{x,y,class:cls,'text-anchor':anchor});e.textContent=value;parent.appendChild(e);return e;}
- function mat(parent,key,data,cx,centerY,cell=9,options={}){
-  const rows=data.length,cols=data[0].length,w=cols*cell,h=rows*cell,group=svgEl('g',{'data-matrix':key,transform:`translate(${cx-w/2},${centerY-h/2})`}),cells=[];
-  if(options.title)text(group,w/2,-10,options.title,'matrix-title');
+ const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x)),data=BlockEngine.build(),cy=[327,550],owner=r=>`var(--g${r})`;
+ const plan=[
+  ['layout','输入 X₀','输入 X₀ 在两个 GPU 上复制；Q/K/V、W_up 按列切分，W_O、W_down 按对应行切分。','The input is replicated; each GPU owns aligned weight shards.'],
+  ['ln1','LN₁','每个 GPU 对完整的隐藏维做 LayerNorm，得到相同的 N₁；保留 X₀ 用作第一条残差。','LayerNorm is local on each replicated full-hidden tensor.'],
+  ['qkv','QKV 列切','两个 GPU 分别计算自己 heads 的 Q、K、V 特征列，token 序列保持完整。','Column-parallel Q/K/V projections, with all tokens on each GPU.'],
+  ['score','QKᵀ','每个完整 head 在本 GPU 独立计算 Q_h K_hᵀ / √d_h。','Each head computes its token-to-token scores locally.'],
+  ['context','Softmax·V','本地 Softmax 后乘本头 V，再拼接本 GPU 的两个 head，得到 Oᵢ。','Head-local Softmax and V; concatenate only local heads.'],
+  ['attnProjection','W_O 行切','Oᵢ 的特征列对齐 W_Oᵢ 的行，得到完整输出形状的部分和 Pᵃᵢ。','The row-parallel output projection produces partial sums.'],
+  ['attnReduce','AllReduce ①','将两个 GPU 的 Attention 部分和逐元素相加，完整 A 返回每个 GPU。','First AllReduce: sum attention contributions and replicate A.'],
+  ['residual1','＋ X₀','每个 GPU 本地做 R = X₀ + A，保留 R 作为第二条残差；这里无需跨 GPU 通信。','First residual: R = X₀ + A, independently on each GPU.'],
+  ['ln2','LN₂','同一个 R 接着进入 LN₂，得到相同的 N₂；这就是后续 MLP 的输入。','Carry R into the second LayerNorm and then into the MLP.'],
+  ['mlpUp','W_up 列切','N₂ 乘 W_up 的不同列，得到各 GPU 自己的中间特征 Zᵢ。','Column-parallel MLP expansion from the attention residual.'],
+  ['gelu','GeLU','对不同的中间特征独立做 GeLU；Hᵢ 保持分片，不做 AllGather。','GeLU is local; keep the hidden features sharded.'],
+  ['mlpDown','W_down 行切','Hᵢ 乘匹配的 W_down 行分片，得到完整输出形状的部分和 Pᵐᵢ。','The row-parallel MLP contraction produces partial sums.'],
+  ['mlpReduce','AllReduce ②','将两个 GPU 的 MLP 部分和逐元素相加，完整 M 返回每个 GPU。','Second AllReduce: sum MLP contributions and replicate M.'],
+  ['residual2','＋ R','每个 GPU 本地做 Y = R + M，完成这个 Transformer block。','Second residual: Y = R + M on each GPU.'],
+  ['result','输出 Y','两个 GPU 得到相同的完整 Y。全过程前向只有两次 AllReduce，没有中间 AllGather。','One complete Transformer block; two forward AllReduces.']
+ ];
+ let time=0,playing=false,raf=null,lastStamp=null,stopAt=plan.length,svg,global={},locals=[],packets=[],hub={},hubMatrix,rail=[],lastStep=-1,captionKey='';
+ const el=(tag,attrs={})=>{const node=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))node.setAttribute(k,String(v));return node;};
+ function txt(parent,x,y,value,cls='matrix-title',anchor='middle'){const node=el('text',{x,y,class:cls,'text-anchor':anchor});node.textContent=value;parent.appendChild(node);return node;}
+ function mat(parent,key,values,x,y,cell=8,opts={}){
+  const rows=values.length,cols=values[0].length,w=cols*cell,h=rows*cell,g=el('g',{'data-matrix':key,transform:`translate(${x-w/2},${y-h/2})`}),cells=[];
+  let title;if(opts.title)title=txt(g,w/2,-10,opts.title);
   for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){
-   const r=svgEl('rect',{x:j*cell+.5,y:i*cell+.5,width:Math.max(1,cell-1),height:Math.max(1,cell-1),rx:1,fill:options.fill||'var(--neutral)'}),tip=svgEl('title');tip.textContent=`${options.title||key}[${i},${j}] = ${data[i][j].toFixed(4)}`;r.appendChild(tip);group.appendChild(r);cells.push(r);
-   if(options.split){const own=options.split==='cols'?Math.floor(j/(cols/2)):Math.floor(i/(rows/2));r.style.fill=owner(own);r.setAttribute('fill-opacity','.55');}
+   const rect=el('rect',{x:j*cell+.5,y:i*cell+.5,width:cell-1,height:cell-1,rx:1,fill:opts.fill||'var(--neutral)','fill-opacity':opts.split?.58:.75}),tip=el('title');tip.textContent=`${key}[${i},${j}] = ${values[i][j].toFixed(4)}`;rect.appendChild(tip);g.appendChild(rect);cells.push(rect);
+   if(opts.split)rect.style.fill=owner(opts.split==='cols'?Math.floor(j/(cols/2)):Math.floor(i/(rows/2)));
   }
-  const dim=text(group,w/2,h+15,`${rows} × ${cols}`,'matrix-shape'),sub=text(group,w/2,h+29,options.sub||'','matrix-sub');parent.appendChild(group);
-  const entry={group,data,cx,cy:centerY,cell,w,h,rows,cols,cells,options,dim,sub,key};matrices[key]=entry;return entry;
+  let dim,sub;if(!opts.compact){dim=txt(g,w/2,h+14,`${rows} × ${cols}`,'matrix-shape');sub=txt(g,w/2,h+28,opts.sub||'','matrix-sub');}
+  parent.appendChild(g);return{g,key,values,x,y,cell,w,h,rows,cols,cells,title,dim,sub};
  }
- function repaint(entry,data,fill){entry.data=data;entry.cells.forEach((cell,k)=>{const i=Math.floor(k/entry.cols),j=k%entry.cols;cell.querySelector('title').textContent=`${entry.key}[${i},${j}] = ${data[i][j].toFixed(4)}`;if(fill)cell.style.fill=fill;});}
- function opacity(entry,v){entry.group.setAttribute('opacity',v);}
- function active(entry,q,fill){opacity(entry,1);entry.cells.forEach((e,k)=>{const col=k%entry.cols;e.style.fill=fill;e.setAttribute('fill-opacity',col<q*entry.cols?'.80':'.10');});}
- function matrixTitle(entry,value){const title=entry.group.querySelector('.matrix-title');if(title)title.textContent=value;}
- function operator(x,y,label){text(svg,x,y,label,'operator');}
- function headBoundaries(entry,axis,stride=2){for(let i=stride;i<(axis==='cols'?entry.cols:entry.rows);i+=stride){const offset=i*entry.cell,line=svgEl('line',{x1:axis==='cols'?offset:0,x2:axis==='cols'?offset:entry.w,y1:axis==='rows'?offset:0,y2:axis==='rows'?offset:entry.h,stroke:'var(--ink)','stroke-opacity':.42,'stroke-width':1});entry.group.appendChild(line);}}
- function mount(){
-  matrices={};globalMats={};locals=[];packets=[];phaseKey='';drawStep=-1;
-  svg=svgEl('svg',{class:'board',viewBox:'0 0 1360 695',role:'img','aria-label':'矩阵按列或按行分成两个 GPU 的分片，动画展示局部矩阵乘法、激活和集合通信。'});
-  svg.innerHTML='<title>Transformer Tensor Parallelism</title><rect class="global-band" x="0" y="0" width="1360" height="204"/>';
-  text(svg,25,23,mode==='attention'?'完整 Self-Attention：X → Q/K/V → 各 Head → W_O → Y':'完整 MLP：X → W_up → GeLU → W_down → Y','global-label','start');
-  text(svg,1335,23,mode==='attention'?'D=8 · 4 heads × 2 维 / head':'T=3 · D=8 · F=16','global-sub','end');
-  if(mode!=='attention'){
-   globalMats.x=mat(svg,'global-X',mlp.X,95,105,9,{title:'X',split:mode==='row'?'cols':null,sub:'所有 token'});
-   globalMats.a=mat(svg,'global-A',mlp.A,320,105,7.5,{title:'W_up = A',split:mode==='column'?'cols':'rows',sub:mode==='column'?'切输出列 ↓':'切输入行 →'});
-   globalMats.h=mat(svg,'global-H',mlp.H,600,105,8,{title:'H = GeLU(XA)',split:mode==='column'?'cols':null,sub:mode==='column'?'特征分片':'完整 H 复制'});
-   globalMats.b=mat(svg,'global-B',mlp.B,850,105,7.5,{title:'W_down = B',split:mode==='column'?'rows':'cols',sub:mode==='column'?'切输入行 →':'切输出列 ↓'});
-   globalMats.y=mat(svg,'global-Y',mlp.Y,1190,105,9,{title:'Y',fill:'var(--sum-soft)',sub:'每 GPU 完整输出'});
-   operator(196,110,'×');operator(452,110,'→');operator(731,110,'×');operator(1001,110,'→');
-  }else{
-   globalMats.x=mat(svg,'global-X',attn.X,90,105,9,{title:'X',sub:'每 GPU 全部 3 个 token'});
-   globalMats.q=mat(svg,'global-WQ',attn.WQ,300,105,8,{title:'W_Q',split:'cols',sub:'H0 H1 | H2 H3'});
-   globalMats.k=mat(svg,'global-WK',attn.WK,405,105,8,{title:'W_K',split:'cols',sub:'H0 H1 | H2 H3'});
-   globalMats.v=mat(svg,'global-WV',attn.WV,510,105,8,{title:'W_V',split:'cols',sub:'H0 H1 | H2 H3'});
-   globalMats.o=mat(svg,'global-O',attn.O,755,105,9,{title:'O = Concat(heads)',split:'cols',sub:'拼接是数学布局，未先 AllGather'});
-   globalMats.wo=mat(svg,'global-WO',attn.WO,975,105,8,{title:'W_O',split:'rows',sub:'按 head 对齐的输入行'});
-   globalMats.y=mat(svg,'global-Y',attn.Y,1210,105,9,{title:'Y',fill:'var(--sum-soft)',sub:'每 GPU 完整输出'});
-   for(const e of [globalMats.q,globalMats.k,globalMats.v,globalMats.o])headBoundaries(e,'cols');headBoundaries(globalMats.wo,'rows');
-   operator(194,110,'×');operator(630,110,'→');operator(865,110,'×');operator(1097,110,'→');
-  }
-  for(let r=0;r<2;r++){
-   const y=cy[r],node=svgEl('g',{'data-gpu':r});node.innerHTML=`<rect class="gpu-shell" x="25" y="${y-87}" width="1055" height="179" rx="12"/>`;svg.appendChild(node);
-   text(node,43,y-62,'GPU '+r,'gpu-label','start').style.fill=owner(r);const note=text(node,1062,y-62,'','gpu-note','end');
-   const local={node,note,r};locals.push(local);
-   if(mode!=='attention'){
-    const d=mode==='column'?mlp.column[r]:mlp.row[r];
-    local.x=mat(node,`gpu${r}-X`,d.x,95,y+7,9,{title:mode==='column'?'同一 X':'Xᵢ',fill:mode==='column'?'var(--neutral)':owner(r),sub:mode==='column'?'起始已复制':`输入列 ${r*4}…${r*4+3}`});
-    local.a=mat(node,`gpu${r}-A`,d.a,300,y+7,7.5,{title:'Aᵢ',fill:owner(r),sub:mode==='column'?`输出列 ${r*8}…${r*8+7}`:`输入行 ${r*4}…${r*4+3}`});
-    local.middle=mat(node,`gpu${r}-middle`,d.z,520,y+7,8,{title:mode==='column'?'Zᵢ = X Aᵢ':'Zᵢ = Xᵢ Aᵢ',fill:owner(r),sub:mode==='column'?'不同的特征列':'同形状的部分和'});
-    local.b=mat(node,`gpu${r}-B`,d.b,750,y+7,mode==='row'?5.5:7.5,{title:'Bᵢ',fill:owner(r),sub:mode==='column'?`输入行 ${r*8}…${r*8+7}`:`输出列 ${r*4}…${r*4+3}`});
-    local.out=mat(node,`gpu${r}-partial`,d.out,980,y+7,9,{title:mode==='column'?'Pᵢ = Hᵢ Bᵢ':'Yᵢ = H Bᵢ',fill:owner(r),sub:mode==='column'?'完整输出形状的部分和':'不同的输出列'});
-    local.result=mat(node,`gpu${r}-result`,mlp.Y,980,y+7,9,{title:'完整 Y',fill:mode==='column'?'var(--sum)':'var(--neutral)',split:mode==='row'?'cols':null,sub:'每 GPU 都相同'});
-    for(const [x,label]of [[190,'×'],[413,'→'],[635,'×'],[867,'→']])text(node,x,y+10,label,'operator');
-   }else{
-    const d=attn.gpu[r];
-    local.x=mat(node,`gpu${r}-X`,attn.X,85,y+7,8,{title:'同一 X',sub:'所有 3 个 token'});local.weights=[];local.qkv=[];
-    for(const [i,k]of ['q','k','v'].entries()){
-     local.weights.push(mat(node,`gpu${r}-W${k}`,d['w'+k],207+i*40,y+8,5,{title:'W_'+k.toUpperCase()+'ᵢ',fill:owner(r)}));
-     local.qkv.push(mat(node,`gpu${r}-${k}`,d[k],372+i*45,y+7,7,{title:k.toUpperCase()+'ᵢ',fill:owner(r)}));
-    }
-    local.heads=[];
-    for(let h=0;h<2;h++){
-     const head=d.heads[h],x=555+h*77,score=mat(node,`gpu${r}-head${h}-score`,head.score,x,y-14,8,{title:'H'+(r*2+h)+' · S',fill:owner(r)}),context=mat(node,`gpu${r}-head${h}-O`,head.o,x,y+51,8,{title:'O_'+(r*2+h),fill:owner(r)});local.heads.push({score,context});
-    }
-    local.o=mat(node,`gpu${r}-O`,d.o,720,y+7,8,{title:'本地 Oᵢ',fill:owner(r),sub:'只拼本 GPU 的 2 个 heads'});
-    local.b=mat(node,`gpu${r}-WO`,d.wo,835,y+7,8,{title:'W_Oᵢ',fill:owner(r),sub:`输入行 ${r*4}…${r*4+3}`});
-    local.out=mat(node,`gpu${r}-partial`,d.out,997,y+7,8,{title:'Pᵢ = Oᵢ W_Oᵢ',fill:owner(r),sub:'完整输出形状的部分和'});
-    local.result=mat(node,`gpu${r}-result`,attn.Y,997,y+7,8,{title:'完整 Y',fill:'var(--sum)',sub:'每 GPU 都相同'});
-    for(const e of [...local.weights,...local.qkv,local.o])headBoundaries(e,'cols');headBoundaries(local.b,'rows');
-    for(const [x,label]of [[148,'×'],[314,'→'],[492,'→'],[677,'→'],[779,'×'],[921,'→']])text(node,x,y+10,label,'operator');
-   }
-  }
-  const hgroup=svgEl('g',{id:'communication-hub'});hgroup.innerHTML='<rect x="1110" y="344" width="225" height="170" rx="13" fill="var(--soft)" stroke="#d1bce6"/>';svg.appendChild(hgroup);hub={group:hgroup,title:text(hgroup,1222,371,'','comm-label'),sub:text(hgroup,1222,393,'','comm-small'),note:text(hgroup,1222,493,'集合通信 · 逻辑示意','comm-small'),operator:text(hgroup,1222,445,'+','operator')};
-  hubResult=mat(hgroup,'hub-result',mode==='attention'?attn.Y:mlp.Y,1222,438,10,{fill:'var(--sum)'});hubResult.dim.setAttribute('opacity',0);hubResult.sub.setAttribute('opacity',0);
-  const overlay=svgEl('g',{id:'motion-layer','aria-hidden':'true'});svg.appendChild(overlay);
-  for(let i=0;i<16;i++){const group=svgEl('g',{'data-packet':i,opacity:0});overlay.appendChild(group);packets.push(group);}
-  text(svg,25,665,'','phase-heading','start').id='phase-heading';text(svg,25,687,'','phase-note','start').id='phase-note';
-  $('board-wrap').replaceChildren(svg);$('position').max=steps[mode].length;$('phase-track').innerHTML=steps[mode].map((s,i)=>`<span class="phase-item" data-phase="${i}">${i+1}. ${s[1]}</span>`).join('');
- }
- function cloneMatrix(entry,packet){packet.replaceChildren(...[...entry.group.children].filter(e=>['rect','line'].includes(e.tagName.toLowerCase())).map(e=>e.cloneNode(true)));packet.dataset.w=entry.w;packet.dataset.h=entry.h;return packet;}
- function fly(packet,source,target,q,scale=1,alpha=1){
+ function paintMatrix(m,values,fill){m.values=values;m.cells.forEach((c,k)=>{const i=Math.floor(k/m.cols),j=k%m.cols;c.querySelector('title').textContent=`${m.key}[${i},${j}] = ${values[i][j].toFixed(4)}`;if(fill)c.style.fill=fill;c.setAttribute('fill-opacity','.75');});}
+ function show(m,alpha){m.g.setAttribute('opacity',alpha);}
+ function scan(m,progress,fill){show(m,1);m.cells.forEach((c,k)=>{c.style.fill=fill;c.setAttribute('fill-opacity',k%m.cols<progress*m.cols?.8:.12);});}
+ function headLines(m,axis){for(let i=2;i<(axis==='cols'?m.cols:m.rows);i+=2)m.g.appendChild(el('line',{x1:axis==='cols'?i*m.cell:0,x2:axis==='cols'?i*m.cell:m.w,y1:axis==='rows'?i*m.cell:0,y2:axis==='rows'?i*m.cell:m.h,stroke:'var(--ink)','stroke-width':1,'stroke-opacity':.35}));}
+ const point=m=>({x:m.x,y:m.y,w:m.w,h:m.h});
+ function clone(m,p){p.replaceChildren(...[...m.g.children].filter(n=>['rect','line'].includes(n.tagName.toLowerCase())).map(n=>n.cloneNode(true)));}
+ function fly(p,from,to,q,scale=1,alpha=1,bend=45){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)q=q<.5?0:1;
-  const bend=(source.y+target.y)/2-55,x=source.x+(target.x-source.x)*q,y=(1-q)*(1-q)*source.y+2*(1-q)*q*bend+q*q*target.y;
-  packet.setAttribute('transform',`translate(${x-source.w/2*scale},${y-source.h/2*scale}) scale(${scale})`);packet.setAttribute('opacity',alpha);packet.dataset.progress=q;
+  const x=from.x+(to.x-from.x)*q,mid=(from.y+to.y)/2-bend,y=(1-q)**2*from.y+2*(1-q)*q*mid+q*q*to.y;
+  p.setAttribute('transform',`translate(${x-from.w/2*scale},${y-from.h/2*scale}) scale(${scale})`);p.setAttribute('opacity',alpha);
  }
- function pmat(entry){return {x:entry.cx,y:entry.cy,w:entry.w,h:entry.h};}
- function prepareStep(type){
-  packets.forEach(p=>{p.innerHTML='';p.setAttribute('opacity',0);});
-  if(type==='shard'){
-   let k=0;for(let r=0;r<2;r++){
-    const l=locals[r];if(mode==='attention'){for(const e of l.weights)cloneMatrix(e,packets[k++]);cloneMatrix(l.b,packets[k++]);}
-    else{cloneMatrix(l.a,packets[k++]);cloneMatrix(l.b,packets[k++]);}
-   }
-  }else if(['reduce','middleReduce','gather'].includes(type)){
-   hubResult.group.remove();hubResult=mat(hub.group,'hub-result',type==='middleReduce'?mlp.Z:mode==='attention'?attn.Y:mlp.Y,1222,438,10,{fill:'var(--sum)'});hubResult.dim.setAttribute('opacity',0);hubResult.sub.setAttribute('opacity',0);
-   for(let r=0;r<2;r++){
-    cloneMatrix(type==='middleReduce'?locals[r].middle:locals[r].out,packets[r]);cloneMatrix(type==='middleReduce'?locals[r].middle:locals[r].result,packets[r+2]);
-    if(type==='middleReduce')packets[r+2].querySelectorAll('rect').forEach(e=>{e.style.fill='var(--sum)';e.setAttribute('fill-opacity','.8');});
-   }
+ function makeAttention(l,r){
+  const y=cy[r],g=el('g',{'data-view':`attention-${r}`});l.node.appendChild(g);l.attention={g,weights:[],qkv:[],heads:[]};const a=l.attention,d=data.gpu[r];
+  for(const[i,k]of ['q','k','v'].entries()){
+   a.weights.push(mat(g,`gpu${r}-W${k}`,d['w'+k],207+i*40,y+8,5,{title:'W_'+k.toUpperCase()+'ᵢ',fill:owner(r)}));
+   a.qkv.push(mat(g,`gpu${r}-${k}`,d[k],372+i*45,y+7,7,{title:k.toUpperCase()+'ᵢ',fill:owner(r)}));
   }
+  for(let h=0;h<2;h++){const dhead=d.heads[h],x=555+h*77;a.heads.push({score:mat(g,`gpu${r}-head${h}-score`,dhead.score,x,y-14,8,{title:'H'+(r*2+h)+' · S',fill:owner(r)}),o:mat(g,`gpu${r}-head${h}-O`,dhead.o,x,y+51,8,{title:'O_'+(r*2+h),fill:owner(r)})});}
+  a.o=mat(g,`gpu${r}-O`,d.o,720,y+7,8,{title:'本地 Oᵢ',fill:owner(r),sub:'只拼本 GPU 的 2 个 heads'});
+  a.wo=mat(g,`gpu${r}-WO`,d.wo,835,y+7,8,{title:'W_Oᵢ',fill:owner(r),sub:`输入行 ${r*4}…${r*4+3}`});
+  for(const m of [...a.weights,...a.qkv,a.o])headLines(m,'cols');headLines(a.wo,'rows');
+  for(const[x,v]of [[148,'×'],[314,'→'],[492,'→'],[677,'→'],[779,'×'],[921,'→']])txt(g,x,y+10,v,'operator');
  }
- function defaultLocal(type,index){
+ function makeMLP(l,r){
+  const y=cy[r],g=el('g',{'data-view':`mlp-${r}`});l.node.appendChild(g);const d=data.gpu[r];l.mlp={g};const m=l.mlp;
+  m.wu=mat(g,`gpu${r}-WU`,d.wu,300,y+7,7.5,{title:'W_upᵢ · 列切',fill:owner(r),sub:`输出列 ${r*8}…${r*8+7}`});
+  m.h=mat(g,`gpu${r}-hidden`,d.z,520,y+7,8,{title:'Zᵢ = N₂ W_upᵢ',fill:owner(r),sub:'本地的中间特征列'});
+  m.wd=mat(g,`gpu${r}-WD`,d.wd,750,y+7,7.5,{title:'W_downᵢ · 行切',fill:owner(r),sub:`输入行 ${r*8}…${r*8+7}`});
+  for(const[x,v]of [[190,'×'],[413,'→'],[635,'×'],[867,'→']])txt(g,x,y+10,v,'operator');
+ }
+ function mount(){
+  svg=el('svg',{class:'board',viewBox:'0 0 1360 718',role:'img','aria-label':'同一个 pre-LN Transformer block 的完整前向：归一化、按 head 的 attention、第一次求和和残差、MLP、第二次求和和残差。'});svg.innerHTML='<title>完整 Transformer Block · Tensor Parallelism</title><rect class="global-band" x="0" y="0" width="1360" height="230"/>';
+  txt(svg,25,18,'同一个 Pre-LN Transformer block · 从 X₀ 到 Y','global-label','start');txt(svg,1335,18,'TP = 2 · T = 3 · D = 8 · F = 16 · 4 heads','global-sub','end');
+  const bypass=el('g',{'aria-hidden':'true'});bypass.innerHTML='<path d="M 68 70 Q 376 116 684 70" fill="none" stroke="#c6bfd3" stroke-width="1.2"/><path d="M 684 70 Q 948 116 1212 70" fill="none" stroke="#c6bfd3" stroke-width="1.2"/>';svg.appendChild(bypass);txt(svg,376,99,'保留 X₀ → 第一次残差','global-sub');txt(svg,948,99,'保留 R → 第二次残差','global-sub');
+  for(let i=0;i<plan.length;i++){
+   const g=el('g',{'data-flow-step':i}),x=25+i*88;g.innerHTML=`<rect x="${x}" y="39" width="84" height="31" rx="5" fill="#f1edf7" stroke="#e1d9ec"/>`;txt(g,x+42,59,plan[i][1],'flow-label');svg.appendChild(g);rail.push(g);if(i<plan.length-1)txt(svg,x+86,59,'›','global-sub');
+  }
+  global.x=mat(svg,'global-X',data.X,72,158,6,{title:'输入 X₀',sub:'起始已复制'});
+  for(const[i,k]of ['WQ','WK','WV'].entries()){global[k]=mat(svg,'global-'+k,data[k],260+i*85,156,6,{title:k.replace('W','W_'),split:'cols'});headLines(global[k],'cols');}
+  global.WO=mat(svg,'global-WO',data.WO,612,156,6,{title:'W_O · 行切',split:'rows'});headLines(global.WO,'rows');
+  global.WU=mat(svg,'global-WU',data.WU,827,156,6,{title:'W_up · 列切',split:'cols'});
+  global.WD=mat(svg,'global-WD',data.WD,1034,168,5,{title:'W_down · 行切',split:'rows'});
+  global.y=mat(svg,'global-Y',data.Y,1260,158,6,{title:'完整输出 Y',fill:'var(--sum-soft)',sub:'两个 GPU 相同'});
   for(let r=0;r<2;r++){
-   const l=locals[r];for(const e of [l.a,l.b,l.middle,l.out,l.result,...(l.weights||[]),...(l.qkv||[]),...(l.heads||[]).flatMap(h=>[h.score,h.context])].filter(Boolean))e.cells.forEach(cell=>cell.setAttribute('fill-opacity','.75'));opacity(l.x,1);opacity(l.b,.35);opacity(l.out,0);opacity(l.result,0);
-   if(mode!=='attention'){
-    opacity(l.a,.35);opacity(l.middle,0);const d=mode==='column'?mlp.column[r]:mlp.row[r];repaint(l.middle,d.z,owner(r));matrixTitle(l.middle,mode==='column'?'Zᵢ = X Aᵢ':'Zᵢ = Xᵢ Aᵢ');l.middle.sub.textContent=mode==='column'?'不同的特征列':'同形状的部分和';
-    if(index>=1)opacity(l.a,1);
-    if(index>1)opacity(l.middle,1);
-    if(mode==='row'&&index>=3){repaint(l.middle,index>=4?mlp.H:mlp.Z,'var(--sum)');matrixTitle(l.middle,index>=4?'完整 H = GeLU(Z)':'完整 Z = Z₀ + Z₁');l.middle.sub.textContent='两个 GPU 各有完整矩阵';}
-    if(mode==='column'&&index>=3){repaint(l.middle,d.h,owner(r));matrixTitle(l.middle,'Hᵢ = GeLU(Zᵢ)');l.middle.sub.textContent='本地激活；不跨 GPU 通信';}
-    if(index>=(mode==='row'?4:3))opacity(l.b,1);
-    if(index>(mode==='row'?4:3))opacity(l.out,1);
-   }else{
-    l.weights.forEach(e=>opacity(e,index>=1?1:.35));l.qkv.forEach(e=>opacity(e,index>=2?1:0));l.heads.forEach((h,j)=>{opacity(h.score,index>=3?1:0);opacity(h.context,index>=4?1:0);repaint(h.score,index>=4?attn.gpu[r].heads[j].p:attn.gpu[r].heads[j].score,owner(r));matrixTitle(h.score,'H'+(r*2+j)+(index>=4?' · P':' · S'));});
-    opacity(l.o,index>=4?1:0);if(index>=4)opacity(l.b,1);if(index>=5)opacity(l.out,1);
-   }
-   l.note.textContent=mode==='attention'?`Head ${r*2}、${r*2+1} · 全部 token · 本地计算`:mode==='column'?'不同特征列 → 匹配的输入行 → 完整输出的部分和':'输入特征部分和 → 先求和 → 不同输出列';
+   const y=cy[r],node=el('g',{'data-gpu':r});node.innerHTML=`<rect class="gpu-shell" x="25" y="${y-87}" width="1055" height="180" rx="12"/>`;svg.appendChild(node);txt(node,43,y-62,'GPU '+r,'gpu-label','start').style.fill=owner(r);
+   const l={node,r};locals.push(l);l.status=txt(node,520,y-62,'','gpu-note');l.savedLabel=txt(node,954,y-62,'保留 X₀','gpu-note','end');l.saved=mat(node,`gpu${r}-saved`,data.X,1020,y-65,4,{compact:true});
+   l.input=mat(node,`gpu${r}-input`,data.X,85,y+7,8,{title:'完整 X₀',sub:'每 GPU 全部 token'});
+   makeAttention(l,r);makeMLP(l,r);
+   l.out=mat(node,`gpu${r}-out`,data.gpu[r].a,997,y+7,8,{title:'Attention 部分和 Pᵃᵢ',fill:owner(r),sub:'完整形状，尚需相加'});
+   l.full=mat(node,`gpu${r}-full`,data.A,997,y+7,8,{title:'完整 A',fill:'var(--sum)',sub:'每 GPU 完整复制'});
+   l.plus=txt(node,1054,y+14,'+','residual-plus');l.plus.style.fill='var(--purple)';
   }
+  hub.g=el('g',{id:'communication-hub'});hub.g.innerHTML='<rect x="1110" y="350" width="225" height="170" rx="13" fill="var(--soft)" stroke="#d1bce6"/>';svg.appendChild(hub.g);
+  hub.title=txt(hub.g,1222,377,'AllReduce','comm-label');hub.sub=txt(hub.g,1222,399,'逐元素相加 → 复制到两个 GPU','comm-small');hub.sign=txt(hub.g,1222,451,'+','operator');hub.note=txt(hub.g,1222,499,'集合通信 · 逻辑示意','comm-small');hubMatrix=mat(hub.g,'hub-result',data.A,1222,444,10,{compact:true,fill:'var(--sum)'});
+  const overlay=el('g',{id:'motion-layer','aria-hidden':'true'});svg.appendChild(overlay);for(let i=0;i<16;i++){const p=el('g',{'data-packet':i,opacity:0});overlay.appendChild(p);packets.push(p);}
+  txt(svg,25,679,'','phase-heading','start').id='phase-heading';txt(svg,25,704,'','phase-note','start').id='phase-note';$('board-wrap').replaceChildren(svg);$('position').max=plan.length;
  }
- function shardAnimation(p){
-  const q=clamp((p-.12)/.72);let k=0;
+ function prepare(index){
+  packets.forEach(p=>{p.replaceChildren();p.setAttribute('opacity',0);});const type=plan[index][0];
+  if(type==='layout'){let k=0;for(const l of locals)for(const m of [...l.attention.weights,l.attention.wo])clone(m,packets[k++]);}
+  if(type==='attnReduce'||type==='mlpReduce')for(let r=0;r<2;r++){clone(locals[r].out,packets[r]);clone(locals[r].full,packets[r+2]);}
+  if(type==='residual1'||type==='residual2')for(let r=0;r<2;r++)clone(locals[r].saved,packets[r]);
+  if(type==='ln2')for(let r=0;r<2;r++)clone(locals[r].full,packets[r]);
+ }
+ function base(index){
   for(let r=0;r<2;r++){
-   const l=locals[r],defs=mode==='attention'?l.weights.map((e,i)=>({e,source:[globalMats.q,globalMats.k,globalMats.v][i],split:'cols'})).concat([{e:l.b,source:globalMats.wo,split:'rows'}]):[{e:l.a,source:globalMats.a,split:mode==='column'?'cols':'rows'},{e:l.b,source:globalMats.b,split:mode==='column'?'rows':'cols'}];
-   for(const {e,source,split}of defs){
-    const sx=source.cx+(split==='cols'?(r===0?-1:1)*source.w/4:0),sy=source.cy+(split==='rows'?(r===0?-1:1)*source.h/4:0),sourceScale=source.cell/e.cell,scale=sourceScale+(1-sourceScale)*q;
-    fly(packets[k++],{x:sx,y:sy,w:e.w,h:e.h},pmat(e),q,scale,p<.08||p>.90?0:Math.min(clamp((p-.08)/.08),1-clamp((p-.84)/.06)));opacity(e,.15+.85*clamp((p-.76)/.15));
-   }
+   const l=locals[r],a=l.attention,m=l.mlp,d=data.gpu[r],mlpView=index>=8;l.attention.g.setAttribute('opacity',mlpView?0:1);l.attention.g.setAttribute('pointer-events',mlpView?'none':'auto');l.mlp.g.setAttribute('opacity',mlpView?1:0);l.mlp.g.setAttribute('pointer-events',mlpView?'auto':'none');
+   l.status.textContent=mlpView?'同一个 R → LN₂ → 列并行 / 行并行 MLP':'LN₁ → 完整 heads 本地计算 → 输出投影行并行';
+   paintMatrix(l.saved,index>=8?data.R:data.X,index>=8?'var(--sum)':'var(--neutral)');l.savedLabel.textContent=index>=8?'保留 R':'保留 X₀';
+   paintMatrix(l.input,index>=9?data.N2:index>=8?data.R:index>=2?data.N1:data.X,'var(--neutral)');l.input.title.textContent=index>=9?'N₂ = LN₂(R)':index>=8?'完整 R':index>=2?'N₁ = LN₁(X₀)':'完整 X₀';show(l.input,1);
+   for(const e of [...a.weights,...a.qkv,a.o,a.wo,...a.heads.flatMap(h=>[h.score,h.o]),m.wu,m.h,m.wd,l.out,l.full])e.cells.forEach(c=>c.setAttribute('fill-opacity','.75'));
+   a.weights.forEach(e=>show(e,index>=1?1:.25));a.qkv.forEach(e=>show(e,index>=3?1:0));
+   a.heads.forEach((h,j)=>{paintMatrix(h.score,index>=5?d.heads[j].p:d.heads[j].score,owner(r));h.score.title.textContent='H'+(r*2+j)+(index>=5?' · P':' · S');show(h.score,index>=4?1:0);show(h.o,index>=5?1:0);});show(a.o,index>=5?1:0);show(a.wo,index>=5?1:.25);
+   show(m.wu,1);paintMatrix(m.h,index>=11?d.h:d.z,owner(r));m.h.title.textContent=index>=11?'Hᵢ = GeLU(Zᵢ)':'Zᵢ = N₂ W_upᵢ';show(m.h,index>=10?1:0);show(m.wd,index>=11?1:.25);
+   paintMatrix(l.out,mlpView?d.m:d.a,owner(r));l.out.title.textContent=mlpView?'MLP 部分和 Pᵐᵢ':'Attention 部分和 Pᵃᵢ';show(l.out,index===6||index===12?1:0);
+   paintMatrix(l.full,index>=14?data.Y:index>=12?data.M:index>=8?data.R:data.A,'var(--sum)');l.full.title.textContent=index>=14?'完整输出 Y':index>=12?'完整 M':index>=8?'完整 R':'完整 A';show(l.full,index===7||index===8||index>=13?1:0);l.plus.setAttribute('opacity',0);
   }
+  hub.g.setAttribute('opacity',.2);hub.title.textContent=index>=8?'AllReduce ②':'AllReduce ①';show(hubMatrix,0);hub.sign.setAttribute('opacity',0);
  }
- function communication(type,p){
-  const gather=type==='gather',middle=type==='middleReduce';hub.title.textContent=gather?'AllGather':middle?'AllReduce SUM':'AllReduce SUM';hub.sub.textContent=gather?'不同的输出列 → 沿列拼接':'相同位置的贡献 → 逐元素相加';hub.group.setAttribute('opacity',1);
-  hubResult.group.setAttribute('opacity',clamp((p-.60)/.12));hub.operator.textContent=gather?'':'+';hub.operator.setAttribute('opacity',p>.32&&p<.60?1:0);
-  if(middle){hubResult.cells.forEach((e,k)=>{e.style.fill='var(--sum)';e.setAttribute('fill-opacity',.8);});}
-  else if(gather)hubResult.cells.forEach((e,k)=>{e.style.fill=owner(k%hubResult.cols<hubResult.cols/2?0:1);e.setAttribute('fill-opacity',.75);});
-  else hubResult.cells.forEach(e=>{e.style.fill='var(--sum)';e.setAttribute('fill-opacity',.75);});
+ function layout(p){let k=0;const q=clamp((p-.1)/.75);for(let r=0;r<2;r++){const l=locals[r],mats=[...l.attention.weights,l.attention.wo],src=[global.WQ,global.WK,global.WV,global.WO];for(let j=0;j<mats.length;j++){const m=mats[j],s=src[j],byRows=j===3,start={x:s.x+(byRows?0:(r===0?-1:1)*s.w/4),y:s.y+(byRows?(r===0?-1:1)*s.h/4:0),w:m.w,h:m.h},scale=s.cell/m.cell+(1-s.cell/m.cell)*q;fly(packets[k++],start,point(m),q,scale,p<.06||p>.96?0:Math.min(clamp((p-.06)/.08),1-clamp((p-.86)/.1)));show(m,.2+.8*clamp((p-.76)/.18));}}}
+ function allReduce(index,p){
+  const values=index===6?data.A:data.M;hub.g.setAttribute('opacity',1);hub.title.textContent=index===6?'AllReduce ①':'AllReduce ②';paintMatrix(hubMatrix,values,'var(--sum)');show(hubMatrix,clamp((p-.60)/.12));hub.sign.setAttribute('opacity',p>.32&&p<.6?1:0);
   for(let r=0;r<2;r++){
-   const e=middle?locals[r].middle:locals[r].out,target=middle?locals[r].middle:locals[r].result,q=clamp((p-.08)/.40),returnQ=clamp((p-.61)/.30),hubTarget={x:1222+(gather?(r===0?-20:20):0),y:438+(gather?0:r===0?-28:28),w:e.w,h:e.h};
-   fly(packets[r],pmat(e),hubTarget,q,1+(hubResult.cell/e.cell-1)*q,p<.06||p>.59?0:Math.min(clamp((p-.06)/.07),1-clamp((p-.48)/.11)));
-   if(!middle)opacity(e,1-clamp((p-.22)/.20));
-   const returnScale=hubResult.cell/target.cell;
-   fly(packets[r+2],{x:1222,y:438,w:target.w,h:target.h},pmat(target),returnQ,returnScale+(1-returnScale)*returnQ,p<.60||p>.97?0:Math.min(clamp((p-.60)/.07),1-clamp((p-.91)/.06)));
-   if(middle){if(p>.70){repaint(target,mlp.Z,'var(--sum)');matrixTitle(target,'完整 Z = Z₀ + Z₁');target.sub.textContent='此时才可做 GeLU';}opacity(target,p<.38?1:p<.84?.2:1);}
-   else{opacity(target,clamp((p-.83)/.10));}
+   const l=locals[r],q=clamp((p-.08)/.40),back=clamp((p-.61)/.30);fly(packets[r],point(l.out),{x:1222,y:444+(r===0?-28:28),w:l.out.w,h:l.out.h},q,1+(10/l.out.cell-1)*q,p<.06||p>.59?0:Math.min(clamp((p-.06)/.07),1-clamp((p-.48)/.11)));show(l.out,1-clamp((p-.22)/.20));
+   const scale=10/l.full.cell;fly(packets[r+2],{x:1222,y:444,w:l.full.w,h:l.full.h},point(l.full),back,scale+(1-scale)*back,p<.60||p>.97?0:Math.min(clamp((p-.60)/.07),1-clamp((p-.91)/.06)));paintMatrix(l.full,values,'var(--sum)');l.full.title.textContent=index===6?'完整 A = ΣPᵃᵢ':'完整 M = ΣPᵐᵢ';show(l.full,clamp((p-.83)/.10));
   }
  }
+ function residual(index,p){for(let r=0;r<2;r++){
+  const l=locals[r],q=clamp((p-.1)/.5),values=index===7?data.R:data.Y;
+  fly(packets[r],point(l.saved),point(l.full),q,1+(l.full.cell/l.saved.cell-1)*q,p<.08||p>.78?0:Math.min(clamp((p-.08)/.08),1-clamp((p-.62)/.16)),15);l.plus.setAttribute('opacity',p>.35&&p<.78?1:0);
+  if(p>.72){paintMatrix(l.full,values,'var(--sum)');l.full.title.textContent=index===7?'R = X₀ + A':'Y = R + M';if(index===7){paintMatrix(l.saved,data.R,'var(--sum)');l.savedLabel.textContent='保留 R';}}
+ }}
  function paint(){
-  const plan=steps[mode],end=time>=plan.length,index=end?plan.length-1:Math.floor(time),p=end?1:time-index,type=plan[index][0];
-  defaultLocal(type,index);if(drawStep!==index){prepareStep(type);drawStep=index;}
-  hub.group.setAttribute('opacity',.22);hub.title.textContent=mode==='row'?'SUM / Concat':'SUM';hub.sub.textContent='完整输出在每个 GPU 复制';hub.operator.setAttribute('opacity',0);opacity(hubResult,0);
-  if(type==='shard')shardAnimation(p);
-  if(type==='linear1')for(let r=0;r<2;r++){active(locals[r].middle,clamp((p-.1)/.7),owner(r));locals[r].a.cells.forEach((e,k)=>e.setAttribute('fill-opacity',(k%locals[r].a.cols)<clamp(p/.8)*locals[r].a.cols?.8:.25));}
-  if(type==='activation')for(let r=0;r<2;r++){const l=locals[r],d=mode==='column'?mlp.column[r].h:mlp.H;repaint(l.middle,d,mode==='column'?owner(r):'var(--sum)');matrixTitle(l.middle,mode==='column'?'Hᵢ = GeLU(Zᵢ)':'完整 H = GeLU(Z)');active(l.middle,clamp((p-.1)/.7),mode==='column'?owner(r):'var(--sum)');}
-  if(type==='linear2')for(let r=0;r<2;r++)active(locals[r].out,clamp((p-.1)/.7),owner(r));
-  if(type==='project')for(let r=0;r<2;r++)for(const e of locals[r].qkv)active(e,clamp((p-.1)/.7),owner(r));
-  if(type==='score')for(let r=0;r<2;r++)for(const h of locals[r].heads)active(h.score,clamp((p-.1)/.7),owner(r));
-  if(type==='context')for(let r=0;r<2;r++){const l=locals[r];l.heads.forEach((h,j)=>{repaint(h.score,attn.gpu[r].heads[j].p,owner(r));matrixTitle(h.score,'H'+(r*2+j)+' · P');opacity(h.score,1);active(h.context,clamp((p-.15)/.65),owner(r));});active(l.o,clamp((p-.45)/.4),owner(r));}
-  if(['reduce','middleReduce','gather'].includes(type))communication(type,p);
-  if(type==='result')for(const l of locals){opacity(l.out,0);opacity(l.result,1);} 
-  const committed=plan.slice(0,index).map(s=>s[0]).concat(p>=.95?[type]:[]),ar=committed.filter(s=>s==='reduce'||s==='middleReduce').length,ag=committed.filter(s=>s==='gather').length;
-  $('comm-count').textContent=`已完成前向通信：${ar} × AllReduce${mode==='row'?` ＋ ${ag} × AllGather`:''}`;
-  $('phase-heading').textContent=`${index+1}. ${plan[index][1]}`;$('phase-note').textContent=plan[index][2];
-  const key=mode+':'+index;if(phaseKey!==key){$('caption-text').textContent=plan[index][2];$('caption-en').textContent=plan[index][3];phaseKey=key;}
-  document.querySelectorAll('[data-phase]').forEach(el=>el.classList.toggle('active',Number(el.dataset.phase)===index));
-  $('position').value=time.toFixed(3);$('position-label').value=`${Math.floor(Math.min(time,plan.length))} / ${plan.length} 步`;$('back').disabled=time<=0;$('next').disabled=end;$('play').textContent=playing?'Ⅱ 暂停 Pause':end?'↺ 重播 Replay':'▶ 播放 Play';$('play').setAttribute('aria-pressed',String(playing));
+  const done=time>=plan.length,index=done?plan.length-1:Math.floor(time),p=done?1:time-index,type=plan[index][0];base(index);if(index!==lastStep){prepare(index);lastStep=index;}
+  if(type==='layout')layout(p);
+  if(type==='ln1')for(const l of locals){paintMatrix(l.input,data.N1,'var(--neutral)');l.input.title.textContent='N₁ = LN₁(X₀)';scan(l.input,clamp((p-.1)/.7),'var(--sum)');}
+  if(type==='qkv')for(let r=0;r<2;r++)for(const m of locals[r].attention.qkv)scan(m,clamp((p-.1)/.7),owner(r));
+  if(type==='score')for(let r=0;r<2;r++)for(const h of locals[r].attention.heads)scan(h.score,clamp((p-.1)/.7),owner(r));
+  if(type==='context')for(let r=0;r<2;r++){const a=locals[r].attention;a.heads.forEach((h,j)=>{paintMatrix(h.score,data.gpu[r].heads[j].p,owner(r));h.score.title.textContent='H'+(r*2+j)+' · P';show(h.score,1);scan(h.o,clamp((p-.15)/.65),owner(r));});scan(a.o,clamp((p-.45)/.4),owner(r));}
+  if(type==='attnProjection'||type==='mlpDown')for(let r=0;r<2;r++)scan(locals[r].out,clamp((p-.1)/.7),owner(r));
+  if(type==='attnReduce'||type==='mlpReduce')allReduce(index,p);
+  if(type==='residual1'||type==='residual2')residual(index,p);
+  if(type==='ln2')for(let r=0;r<2;r++){
+   const l=locals[r],q=clamp((p-.06)/.48);fly(packets[r],point(l.full),point(l.input),q,1,p<.04||p>.66?0:Math.min(clamp((p-.04)/.06),1-clamp((p-.56)/.1)),38);show(l.full,1-clamp((p-.08)/.25));show(l.input,clamp((p-.46)/.12));
+   if(p>.65){paintMatrix(l.input,data.N2,'var(--neutral)');l.input.title.textContent='N₂ = LN₂(R)';scan(l.input,clamp((p-.65)/.25),'var(--sum)');}
+  }
+  if(type==='mlpUp')for(let r=0;r<2;r++)scan(locals[r].mlp.h,clamp((p-.1)/.7),owner(r));
+  if(type==='gelu')for(let r=0;r<2;r++){const m=locals[r].mlp.h;paintMatrix(m,data.gpu[r].h,owner(r));m.title.textContent='Hᵢ = GeLU(Zᵢ)';scan(m,clamp((p-.1)/.7),owner(r));}
+  if(type==='result')for(const l of locals){paintMatrix(l.full,data.Y,'var(--sum)');l.full.title.textContent='完整输出 Y';show(l.full,1);}
+  for(let i=0;i<rail.length;i++){const rect=rail[i].querySelector('rect');rect.setAttribute('fill',i===index?'var(--soft)':i<index?'#f4f0f9':'#faf9fc');rect.setAttribute('stroke',i===index?'#a88bce':'#e1d9ec');rail[i].querySelector('text').style.fill=i===index?'var(--purple)':'var(--muted)';}
+  const count=(index>6||index===6&&p>=.95?1:0)+(index>12||index===12&&p>=.95?1:0);$('comm-count').textContent=`已完成前向通信：${count} / 2 次 AllReduce`;
+  $('phase-heading').textContent=`${index+1}. ${plan[index][1]}`;$('phase-note').textContent=plan[index][2];if(captionKey!==String(index)){$('caption-text').textContent=plan[index][2];$('caption-en').textContent=plan[index][3];captionKey=String(index);}
+  $('position').value=time.toFixed(3);$('position-label').value=`${Math.floor(Math.min(time,plan.length))} / ${plan.length} 步`;$('back').disabled=time<=0;$('next').disabled=done;$('play').textContent=playing?'Ⅱ 暂停 Pause':done?'↺ 重播 Replay':'▶ 播放 Play';$('play').setAttribute('aria-pressed',String(playing));
  }
  function pause(){playing=false;if(raf!==null)cancelAnimationFrame(raf);raf=null;lastStamp=null;if(svg)paint();}
- function seek(value){pause();time=clamp(Number(value),0,steps[mode].length);paint();}
+ function seek(t){pause();time=clamp(Number(t),0,plan.length);paint();}
  function tick(stamp){if(!playing)return;if(lastStamp!==null)time=Math.min(stopAt,time+Math.min(100,stamp-lastStamp)/Number($('speed').value));lastStamp=stamp;if(time>=stopAt){time=stopAt;playing=false;raf=null;lastStamp=null;}paint();if(playing)raf=requestAnimationFrame(tick);}
- function start(target=steps[mode].length){if(time>=steps[mode].length)time=0;stopAt=target;playing=true;lastStamp=null;paint();raf=requestAnimationFrame(tick);}
- function setMode(value){if(raf!==null)cancelAnimationFrame(raf);playing=false;raf=null;lastStamp=null;mode=value;time=0;mount();paint();document.querySelectorAll('[data-mode]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.mode===mode)));}
- $('play').addEventListener('click',()=>playing?pause():start());$('next').addEventListener('click',()=>{pause();start(Math.min(steps[mode].length,Math.floor(time+1e-6)+1));});$('back').addEventListener('click',()=>seek(Math.max(0,Math.ceil(time-1e-6)-1)));$('reset').addEventListener('click',()=>seek(0));$('result').addEventListener('click',()=>seek(steps[mode].length));$('position').addEventListener('input',e=>seek(e.target.value));document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>setMode(el.dataset.mode)));document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
- window.TensorLab={seek,pause,play:()=>start(),setMode,get time(){return time;},get playing(){return playing;},get mode(){return mode;},get plan(){return steps[mode];},data:{mlp,attention:attn}};
- setMode('column');
+ function play(target=plan.length){if(time>=plan.length)time=0;stopAt=target;playing=true;lastStamp=null;paint();raf=requestAnimationFrame(tick);}
+ $('play').addEventListener('click',()=>playing?pause():play());$('next').addEventListener('click',()=>{pause();play(Math.min(plan.length,Math.floor(time+1e-6)+1));});$('back').addEventListener('click',()=>seek(Math.max(0,Math.ceil(time-1e-6)-1)));$('reset').addEventListener('click',()=>seek(0));$('result').addEventListener('click',()=>seek(plan.length));$('position').addEventListener('input',e=>seek(e.target.value));document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+ window.TensorBlockLab={seek,pause,play:()=>play(),get time(){return time;},get playing(){return playing;},get plan(){return plan;},data};mount();paint();
 })();
+
 </script>
-</body>
-</html>
+</body></html>
