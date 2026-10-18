@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="An animated GIF showing simultaneous gradient uploads from six workers, a finite switch egress queue, and Parameter Server incast congestion.">
+<title>Parameter Server · Incast 拥塞 | Han Tian</title>
+<style>
+:root{color-scheme:light;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:#17243c;background:#f4f7fc;line-height:1.65}*{box-sizing:border-box}body{margin:0}main{max-width:1496px;margin:auto;padding:22px 28px 32px}a{color:#295eaa;text-underline-offset:3px}nav{font-size:13px;margin-bottom:17px}h1{font-size:28px;line-height:1.35;margin:0 0 8px}header p{margin:0;color:#687991;font-size:15px}.animation{margin:22px 0 12px;border:1px solid #d8e1ed;border-radius:15px;overflow:hidden;background:#f4f7fc}.animation img{display:block;width:100%;height:auto}figcaption{padding:12px 18px;border-top:1px solid #d8e1ed;font-size:14px;background:white}.actions{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:18px 0;font-size:14px}.download{display:inline-block;background:#1c355b;color:white;padding:9px 16px;border-radius:8px;text-decoration:none}.note{max-width:1040px;font-size:14px;color:#596c87}.lesson-nav{border-top:1px solid #d8e1ed;margin-top:25px;padding-top:17px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:14px}.credit{font-size:12px;color:#687991;margin-top:20px}a:focus-visible{outline:3px solid #6c9ce0;outline-offset:4px}@media(max-width:650px){main{padding:16px 12px 24px}h1{font-size:23px}.animation{border-radius:8px}figcaption{font-size:12px;padding:10px}.lesson-nav{font-size:13px}}
+</style>
+</head>
+<body>
+<main>
+<nav aria-label="Course navigation"><a href="../">← Courses · Software Optimization for Intelligent Computing</a></nav>
+<header>
+<h1>Parameter Server · Incast 拥塞</h1>
+<p>第六章 · 数据并行与 Parameter Server 架构 · 对应课件第 26–27 页</p>
+</header>
+<figure class="animation">
+<img src="assets/parameter-server-incast.gif" width="1440" height="840" alt="18 秒循环动画：Parameter Server 下发参数，六个 worker 本地计算后同时上传彩色梯度数据块。交换机通往服务器的出口队列从空逐渐填满，后续到达的数据包因缓冲溢出被丢弃，最终积压逐渐排空。">
+<figcaption>参数下发 → 本地梯度计算 → 多个 Worker 同时回传 → 出口队列积压与溢出 → 队列排空</figcaption>
+</figure>
+<div class="actions"><a class="download" href="assets/parameter-server-incast.gif" download="parameter-server-incast.gif">下载 GIF · 3.3 MB</a><a href="assets/parameter-server-incast-preview.png" target="_blank" rel="noopener">查看静态关键帧</a><span>18 秒循环 · 1440 × 840</span></div>
+<p class="note">每种颜色对应一个 Worker。六条入口在突发期间各以 R 的速率发送梯度，而通往 PS 的出口带宽为 R；进入速度超过发出速度，出口队列就会积压。这张图采用 10 格有限缓冲和 Drop-tail 丢包策略，演示同步回传可能引起的 Incast；时间、容量与数据包大小均为教学示意，未展开重传过程。</p>
+<nav class="lesson-nav" aria-label="Lesson sequence"><a href="ring-allreduce.html">← 前一演示：Ring AllReduce</a><a href="pipeline-parallelism.html">后一演示：Pipeline Parallelism →</a></nav>
+<footer class="credit">Han Tian · Chapter 6 · <a href="https://www.usenix.org/legacy/events/fast08/tech/full_papers/phanishayee/phanishayee_html/index.html" target="_blank" rel="noopener" lang="en">Reference: TCP Incast and finite switch buffers (FAST 2008)</a></footer>
+</main>
+</body>
+</html>
