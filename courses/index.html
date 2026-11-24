@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Courses | Han Tian</title><meta name="description" content="Interactive course materials: GPU matrix multiplication, FlashAttention, Ring AllReduce, Parameter Server incast, pipeline parallelism, and tensor parallelism."><meta name="author" content="Han Tian"><link rel="stylesheet" href="../stylesheets/styles.css"><link rel="stylesheet" href="courses.css"></head><body><table summary="Page layout" id="tlayout"><tr valign="top"><td id="layout-menu"><nav aria-label="Main navigation">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Courses | Han Tian</title><meta name="description" content="Interactive course materials: GPU matrix multiplication, FlashAttention, Ring AllReduce, Parameter Server incast, pipeline and tensor parallelism, and model-based and model-free policy iteration in WormWorld."><meta name="author" content="Han Tian"><link rel="stylesheet" href="../stylesheets/styles.css"><link rel="stylesheet" href="courses.css"></head><body><table summary="Page layout" id="tlayout"><tr valign="top"><td id="layout-menu"><nav aria-label="Main navigation">
 <div class="menu-category">Welcome</div>
 <div class="menu-item"><a href="../index.html">Home</a></div>
 <div class="menu-item"><a href="../index.html#publications">Publications</a></div>
@@ -39,6 +39,17 @@
 <p>Follow one complete pre-LN Transformer block along two fixed GPU lanes. The same smoothly scrolling flow directly shows full weights splitting by rows or columns into GPU shards, local head concatenation, and individual cells aligning for AllReduce sums. Select a partial-sum or result cell to inspect both GPUs’ numerical contributions.</p>
 <ul class="topics"><li>Complete Transformer forward pass</li><li>Column and row weight shards</li><li>Two AllReduces and residual paths</li></ul>
 <div class="resource-actions"><a class="open-demo" href="demos/tensor-parallelism.html">Open demo →</a></div></article>
+</div>
+<p class="course-subtitle" id="reinforcement-learning">Chapter 10 · Reinforcement Learning and Systems Applications</p>
+<div class="resource-list">
+<article class="resource" aria-labelledby="wormworld-model-title"><div class="resource-heading"><span class="resource-number">07</span><div><p class="resource-type">Interactive demo · Model-based reinforcement learning</p><h3 id="wormworld-model-title"><a href="demos/wormworld-policy-iteration.html">WormWorld: Model-Based Policy Iteration</a></h3></div></div>
+<p>Evaluate the current policy one grid cell at a time using the environment model. Switch between state values (V) and action values (Q), then improve the policy and follow the path its new arrows trace.</p>
+<ul class="topics"><li>Bellman updates</li><li>Policy evaluation and improvement</li></ul>
+<div class="resource-actions"><a class="open-demo" href="demos/wormworld-policy-iteration.html">Open demo →</a></div></article>
+<article class="resource" aria-labelledby="wormworld-sample-title"><div class="resource-heading"><span class="resource-number">08</span><div><p class="resource-type">Interactive demo · Model-free reinforcement learning</p><h3 id="wormworld-sample-title"><a href="demos/wormworld-sample-policy-iteration.html">WormWorld: Learning a Policy from Sampled Episodes</a></h3></div></div>
+<p>Follow the worm as it explores, then replay an episode to update its action values. Compare a one-step SARSA target with a full Monte Carlo return and watch how the next policy changes.</p>
+<ul class="topics"><li>Sampled trajectories</li><li>SARSA and Monte Carlo</li></ul>
+<div class="resource-actions"><a class="open-demo" href="demos/wormworld-sample-policy-iteration.html">Open demo →</a></div></article>
 </div></section></main>
 <div id="footer"><div id="footer-text"><a href="../index.html">Han Tian · Home</a></div></div></td></tr></table>
 </body></html>

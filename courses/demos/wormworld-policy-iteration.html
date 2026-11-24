@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WormWorld · 策略迭代</title>
+<style>
+:root {
+  color-scheme: light;
+  --ink:#241e33; --muted:#625c70; --purple:#56368f; --violet:#6a45a9;
+  --paper:#f7f6fa; --line:#d8d3e1; --soft:#eee8f6; --green:#1c6247;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,Menlo,monospace;
+  font:20px/1.42 Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  color:var(--ink); background:var(--paper);
+}
+*{box-sizing:border-box}
+body{margin:0}
+[hidden]{display:none!important}
+h1,h2,h3,p{margin:0}
+button,select{font:inherit;color:inherit}
+button,select,summary{cursor:pointer}
+button,select{background:#fff;border:1px solid var(--line);border-radius:8px}
+button{padding:7px 14px;font-weight:560}
+button:hover:not(:disabled),select:hover{border-color:var(--violet);background:var(--soft)}
+button:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #8862c1;outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+main{max-width:1460px;margin:auto;padding:14px clamp(16px,3.4vw,54px) 22px}
+.topline,.settings,.tabs,.headline,.controls,.directions,.sweepnav{display:flex;align-items:center}
+.topline{justify-content:space-between;gap:18px;min-height:46px}
+h1{font-size:clamp(24px,2.25vw,36px);font-weight:690;letter-spacing:-.04em;line-height:1.15}
+h1 em{color:var(--purple);font-family:Georgia,serif;font-weight:600}
+.settings{gap:13px;flex-wrap:wrap}
+.settings label{display:flex;align-items:center;gap:5px;font-size:16px;color:var(--muted)}
+.settings select{padding:5px 7px;font-size:17px;min-height:38px}
+.tabs{gap:2px;background:#e9e6ee;border-radius:9px;padding:3px}
+.tabs button{padding:4px 12px;border-color:transparent;background:transparent;min-height:34px;font-size:17px;white-space:nowrap}
+.tabs button[aria-selected="true"],.tabs .active{background:white;color:var(--purple);box-shadow:0 1px 3px #25153b20}
+#stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;list-style:none;margin:15px 0 0;padding:0;border-radius:9px;overflow:hidden;background:var(--line);border:1px solid var(--line)}
+.stage{display:flex;align-items:center;justify-content:center;gap:9px;font-size:clamp(17px,1.55vw,23px);font-weight:580;color:#625a70;background:#f0edf4;padding:9px 4px;line-height:1.25;min-width:0}
+.stage.active,.stage[aria-current="step"]{color:white;background:var(--purple)}
+.stage .num{width:1.45em;height:1.45em;display:inline-grid;place-items:center;flex-shrink:0;border-radius:100%;font:600 .84em/1 var(--mono);background:#e0dbe9}
+.stage.active .num,.stage[aria-current="step"] .num{background:#fff;color:var(--purple)}
+.headline{gap:14px;flex-wrap:wrap;margin:14px 0 9px}
+#round{color:var(--purple);font-size:17px;font-weight:650}
+#title{font-size:clamp(27px,2.55vw,40px);line-height:1.22;letter-spacing:-.025em}
+.scene{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);align-items:start;gap:clamp(12px,1.8vw,28px)}
+.board,.scene aside{min-width:0;background:white;border:1px solid var(--line);border-radius:12px}
+.board{padding:9px 14px 10px}
+.matrix{display:grid;grid-template-columns:20px repeat(var(--cols),minmax(0,1fr));gap:5px}
+.axis{display:grid;align-items:center;justify-items:center;font:600 16px/1.2 var(--mono);color:var(--muted)}
+.cell{min-width:0;position:relative;display:grid;place-content:center;justify-items:center;isolation:isolate;height:clamp(74px,11.9vh,125px);padding:0;line-height:1;border:1px solid var(--line);border-radius:8px;background-color:var(--tint,#f8f6fb);overflow:hidden;text-align:center;font-variant-numeric:tabular-nums}
+button.cell:hover{background-color:var(--tint,#f8f6fb);border-color:var(--violet)}
+.cell[aria-pressed="true"],.cell.selected{outline:3px solid var(--violet);outline-offset:-3px;z-index:1}
+.bigArrow{font:620 clamp(48px,4.1vw,72px)/.98 system-ui;color:var(--purple)}
+.value{font:620 clamp(38px,3.7vw,60px)/1 var(--mono);letter-spacing:-.07em}
+.cell.changed{background-color:#fff3df;box-shadow:inset 0 -4px #bc801d}
+.cell.changed .bigArrow{color:#915200}
+.oldArrow,.origin{position:absolute;top:5px;font-size:15px;line-height:1.1}
+.oldArrow{right:7px;color:#765926}
+.origin{left:7px;font-weight:600;color:var(--purple)}
+.wall{background:repeating-linear-gradient(135deg,#e3e0e8 0 2px,#efedf2 2px 9px);color:#635e69}
+.goal{background-color:#e7f4eb;color:var(--green)}
+.tileText,.goal b,.wall span{font-size:clamp(18px,1.65vw,26px);font-weight:650;line-height:1.15}
+.goal small{font-size:16px}
+.qcell{background-image:linear-gradient(to top right,transparent 49.3%,#cbc4d9 50%,transparent 50.7%),linear-gradient(to bottom right,transparent 49.3%,#cbc4d9 50%,transparent 50.7%)}
+.qval{position:absolute;font:590 clamp(20px,1.82vw,29px)/1 var(--mono);letter-spacing:-.07em;color:var(--ink)}
+.qval.d0,.qval.d2{left:50%;transform:translateX(-50%)}
+.qval.d0{top:5%}.qval.d2{bottom:5%}
+.qval.d1,.qval.d3{top:50%;transform:translateY(-50%)}
+.qval.d1{right:3%}.qval.d3{left:3%}
+#legend{margin:7px 0 0 25px;color:var(--muted);font-size:17px;line-height:1.35}
+.scene aside{padding:clamp(14px,1.6vw,24px)}
+#focusTitle{font-size:clamp(21px,1.95vw,30px);line-height:1.25;margin-bottom:10px;letter-spacing:-.02em}
+#inspector{overflow-wrap:anywhere;font-size:clamp(20px,1.6vw,24px)}
+#inspector > * + *{margin-top:10px}
+#inspector p + p{margin-top:8px}
+.lead{line-height:1.5}
+.math,.calculation{font-family:"STIX Two Text",Georgia,"PingFang SC","Microsoft YaHei",serif;line-height:1.45;font-variant-numeric:tabular-nums}
+.math{font-size:clamp(22px,2vw,30px)}
+.calculation,.result{border-left:4px solid var(--violet);background:#f3eef9;color:#443255;padding:8px 12px;font-size:clamp(22px,1.95vw,29px)}
+.directions,.sweepnav{flex-wrap:wrap;gap:6px}
+.directions button,.sweepnav button{padding:4px 10px;min-height:39px;font-size:18px}
+.directions [aria-pressed="true"]{background:var(--purple);border-color:var(--purple);color:white}
+.scores,table.scores,.scores table{width:100%;font-variant-numeric:tabular-nums}
+table.scores,.scores table{border-collapse:collapse;font-size:20px}
+.scores th,.scores td{border-bottom:1px solid var(--line);padding:3px 5px;text-align:left}
+.scores th{font-size:17px;color:var(--muted);font-weight:560}
+.scores .best{font-weight:690;color:var(--purple);background:#f2edf7}
+.controls{flex-wrap:wrap;justify-content:center;gap:12px;margin-top:12px}
+.controls button{min-height:46px}
+#step{background:var(--purple);border-color:var(--purple);color:white;padding-inline:24px}
+#step:hover:not(:disabled){background:#493078}
+#reset{border-color:transparent;background:transparent;color:var(--muted)}
+#rules{font-size:16px;color:var(--muted);margin-top:14px;max-width:100ch}
+#rules summary{font-weight:600}
+#rules p{margin-top:6px}
+sub,sup{line-height:0}
+@media(min-width:901px) and (max-height:740px){
+  main{padding-top:9px}.topline{min-height:40px}
+  #stages{margin-top:8px}.stage{padding-block:7px}
+  .headline{margin:10px 0 7px}.board{padding:6px 11px 8px}
+  .cell{height:clamp(68px,11.25vh,83px)}
+  .controls{margin-top:9px}
+}
+@media(max-width:900px){
+  main{padding-inline:14px}.scene{grid-template-columns:minmax(0,1.4fr) minmax(245px,1fr);gap:10px}
+  .board{padding:7px}.matrix{gap:3px;grid-template-columns:14px repeat(var(--cols),minmax(0,1fr))}
+  .scene aside{padding:13px}.settings{gap:6px}.settings select,.tabs button{font-size:15px}
+  .qval{font-size:clamp(15px,2vw,18px)}.settings label{font-size:15px}
+}
+@media(max-width:700px){
+  main{padding:10px}.topline{align-items:flex-start;flex-direction:column;gap:8px}.settings{width:100%;justify-content:space-between}
+  #stages{margin-top:12px}.stage{font-size:15px;gap:3px;text-align:center;min-height:42px}.stage .num{width:1.35em;height:1.35em}
+  .scene{grid-template-columns:1fr}.headline{gap:8px}.cell{height:clamp(72px,16vw,94px)}
+  .qval{font-size:clamp(15px,3.5vw,23px)}
+  #legend{margin-left:17px;font-size:16px}.controls{gap:6px}.controls button{padding:6px 11px;font-size:18px}
+}
+@media(max-width:400px){
+  main{padding:8px}.stage{flex-direction:column;font-size:14px;padding:4px 1px}
+  .cell{height:68px}.origin,.oldArrow{font-size:11px}.qval{font-size:clamp(12px,3.45vw,14px)}
+  .bigArrow{font-size:46px}.value{font-size:clamp(29px,8.4vw,34px)}
+  .tileText,.goal b,.wall span{font-size:17px}.settings{gap:3px}.settings select{max-width:158px}
+  .tabs button,.settings select{padding-inline:5px}.controls{gap:4px}#step{padding-inline:12px}
+}
+.formulaBlock{padding:9px 12px;border-left:4px solid var(--violet);background:var(--soft);border-radius:0 6px 6px 0}
+.formulaBlock .math{color:#412665;font-size:clamp(22px,1.88vw,30px);line-height:1.48}.formulaBlock .math sub{font-size:.68em}.notation{color:var(--muted);font-size:clamp(16px,1.35vw,20px)}.formulaBlock .notation{margin-top:4px}.term{display:inline-block}
+/* Keep the two views on the same row and align their coordinate axes. */
+.scene.boards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:clamp(10px,1.5vw,24px)}
+.boards .board{display:flex;flex-direction:column;padding:10px 13px 10px}
+.boardHeading{display:flex;align-items:center;justify-content:space-between;gap:7px;min-height:39px;margin-bottom:4px}
+.boardHeading h3{font-size:clamp(19px,1.78vw,27px);letter-spacing:-.025em;line-height:1.2}
+.referenceSwitch{display:inline-flex;align-items:center;gap:5px;color:#17644f;font-size:clamp(13px,1.15vw,17px);white-space:nowrap;cursor:pointer}
+.referenceSwitch input{width:16px;height:16px;accent-color:#24755c;cursor:pointer}
+#valueMode{font-size:clamp(14px,1.2vw,18px);padding:3px 6px;max-width:55%}
+.boards .matrix{margin-top:2px}.boards .cell{height:clamp(69px,10.6vh,112px)}
+.boards .bigArrow{font-size:clamp(42px,3.8vw,62px)}
+.boards .value{font-size:clamp(34px,3.15vw,55px)}
+.boards .qval{font-size:clamp(19px,1.7vw,28px)}
+#grid .cell.routePath{background-color:#ece6f8}
+#grid .cell.changed{background-color:#fff0d9}
+#grid .cell.goal{background-color:#e6f4e9}
+#grid .cell.optimalPath::after{content:"";position:absolute;inset:4px;border:1.5px dashed #429378;border-radius:5px;pointer-events:none}
+#grid .cell.arrive{box-shadow:inset 0 0 0 3px #317a61}
+#grid .cell.arrive .bigArrow{color:#20664d}
+#grid .optArrow,#grid .routeMark,#grid .origin,#grid .oldArrow{z-index:1}
+#grid .optArrow{position:absolute;bottom:6px;left:7px;padding:1px 4px;border-radius:4px;background:#e4f3ec;color:#165e48;font:650 clamp(11px,1vw,15px)/1.18 system-ui}
+#grid .routeMark{position:absolute;bottom:6px;right:7px;min-width:18px;padding:2px 4px;border-radius:5px;background:#6a529d;color:white;font:650 clamp(11px,1vw,15px)/1 var(--mono)}
+#valueGrid .qval.written{color:#753e00;background:#ffe2a8;border-radius:4px;font-weight:750}
+#valueGrid .qval.unknown{color:#827d88}
+#valueGrid .cell.changed{background-color:#fff3df}
+#legend,#valueLegend{margin:8px 0 0 21px;font-size:clamp(15px,1.22vw,19px);line-height:1.4;color:var(--muted)}
+.formulaTray{margin-top:14px;border-top:1px solid var(--line);padding:12px 0 0}
+#focusTitle{color:var(--purple);font-size:clamp(19px,1.6vw,25px);margin:0 0 8px}
+.formulaTray #inspector{background:#fff;padding:12px 16px;border:1px solid var(--line);border-radius:10px;font-size:clamp(18px,1.45vw,23px)}
+.formulaTray #inspector > * + *{margin-top:7px}
+@media(min-width:950px){
+ .formulaTray #inspector{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 18px;align-items:start}
+ .formulaTray #inspector > * + *{margin-top:0}
+ .formulaTray .compactTD{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:center;gap:6px 18px}
+ .formulaTray .compactTD .sample{grid-column:1/-1}
+ .formulaTray .compactTD .calculation{margin:0}
+ .formulaTray .scores{grid-column:2;grid-row:1/4}
+}
+@media(min-width:741px) and (max-height:760px){.boards .cell{height:clamp(60px,9.35vh,77px)}.boardHeading{min-height:32px}}
+@media(max-width:900px){.boards .board{padding:7px}.boards .bigArrow{font-size:40px}.boards .value{font-size:32px}.boards .qval{font-size:clamp(14px,2vw,19px)}}
+@media(max-width:700px) and (min-width:601px){.boardHeading{align-items:start;flex-direction:column;min-height:59px}.boards .qval{font-size:13px}.boards .cell{height:74px}}
+@media(max-width:600px){
+ .scene.boards{grid-template-columns:1fr;gap:9px}
+ .boards .board{padding:6px 8px 8px}.boardHeading{min-height:32px;margin-bottom:0}
+ .boards .cell{height:clamp(47px,12.5vw,69px)}
+ .boards .bigArrow{font-size:clamp(27px,7.4vw,40px)}.boards .value{font-size:clamp(24px,6.8vw,33px)}
+ .boards .qval{font-size:clamp(12px,3.25vw,17px)}
+ #legend,#valueLegend{margin:5px 0 0 14px;font-size:14px}
+ #grid .routeMark{bottom:3px;right:4px;min-width:13px}
+ #grid .optArrow{bottom:3px;left:4px;padding:0 2px}
+ #grid .cell.optimalPath::after{inset:2px}
+ .boards .origin,.boards .oldArrow{font-size:10px;top:3px}
+ .formulaTray #inspector{padding:10px}
+}
+
+
+#grid{position:relative}
+.bridge{position:absolute;z-index:3;pointer-events:none;display:grid;place-items:center;width:16px;height:14px;background:#f0eaf9;color:#50307e;border-radius:3px;font:700 13px/1 system-ui}
+.bridge.across{right:-2.5px;top:50%;transform:translate(50%,-50%)}
+.bridge.downward{bottom:-2.5px;left:50%;transform:translate(-50%,50%)}
+.boards .qcell{container-type:size}
+.boards .qval{font-size:min(19cqw,30cqh,28px)}
+.boards .qval.d0,.boards .qval.d2{transform:translate(-50%,-50%);bottom:auto}
+.boards .qval.d0{top:16.66%}.boards .qval.d2{top:83.33%}
+#valueGrid .workCell{box-shadow:inset 0 -5px #cf8527}
+@media(max-width:700px){.settings{flex-wrap:wrap;justify-content:flex-start}.settings #schedule{max-width:180px}}
+
+#transferCue{display:flex;align-items:baseline;gap:4px 7px;flex-wrap:wrap;margin:8px 0 0 20px;color:#453260;font:550 clamp(15px,1.3vw,20px)/1.35 system-ui;font-variant-numeric:tabular-nums}
+#transferCue[hidden]{display:none}
+#transferCue .cueRead,#transferCue .cueWrite{border-radius:3px;font:650 13px/1.45 system-ui;padding:0 4px}
+#transferCue .cueRead{background:#eee8f8;color:#50377a}#transferCue .cueWrite{background:#ffe7b5;color:#674500}
+@media(max-width:600px){#transferCue{margin-left:14px;font-size:15px}}
+#play[aria-pressed="true"]{background:var(--soft);border-color:var(--violet)}
+.controls .speedLabel{color:var(--muted);font-size:17px;white-space:nowrap}
+.controls #speed{padding:7px 4px;min-height:42px}
+@media(max-width:700px){.controls .speedLabel{font-size:15px}}
+</style>
+</head>
+<body>
+<main>
+<header class="topline">
+  <h1><em>WormWorld</em> 策略迭代</h1>
+  <div class="settings">
+    <div class="tabs" role="tablist" aria-label="价值函数">
+      <button role="tab" aria-controls="workspace" id="tabV">V 状态价值</button>
+      <button role="tab" aria-controls="workspace" id="tabQ">Q 动作价值</button>
+    </div>
+    <select id="schedule" aria-label="策略评估的更新顺序"><option value="reverse">终点向外 · 逐格更新</option><option value="sync">同步整遍 · 课件</option></select>
+    <select id="map" aria-label="选择地图">
+      <option value="world">二维小虫地图</option><option value="line">课件走廊 A → B → T</option>
+    </select>
+  </div>
+</header>
+<nav id="stages" aria-label="本轮四步"></nav>
+<section id="workspace" role="tabpanel" aria-labelledby="tabV">
+  <div class="headline"><span id="round"></span><h2 id="title" aria-live="polite"></h2></div>
+  <div class="scene boards">
+    <section class="board" aria-label="左图，策略与执行轨迹">
+      <div class="boardHeading"><h3>策略与执行轨迹</h3><label class="referenceSwitch"><input type="checkbox" id="optimal" checked>最优策略对照</label></div>
+      <div id="grid" class="matrix" role="group" aria-label="策略地图，选择格子"></div><p id="legend"></p>
+    </section>
+    <section class="board" aria-label="右图，价值估计">
+      <div class="boardHeading"><h3 id="valueTitle">状态价值 V(s)</h3></div>
+      <div id="valueGrid" class="matrix" role="group" aria-label="价值地图，选择格子"></div><p id="transferCue" hidden></p><p id="valueLegend"></p>
+    </section>
+  </div>
+  <footer class="controls"><button id="back">← 上一步</button><button id="step"></button><button id="finishSweep" hidden>完成本遍</button><button id="play" aria-pressed="false">▶ 自动播放</button><label class="speedLabel">速度 <select id="speed" aria-label="播放速度"><option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option><option value="16">16×</option></select></label><button id="reset">重新开始</button></footer>
+    <aside class="formulaTray" aria-label="选中格子的公式推算"><h3 id="focusTitle"></h3><div id="inspector"></div></aside>
+</section>
+<details id="rules"><summary>地图规则与课件对应</summary>
+<p>每步可选上、右、下、左，撞墙或越界时留在原格。普通步奖励为 0，进入终点 T 得 +1，随后回合结束。γ = 0.9，终点后续回报为 0。初始策略全部向右，初始价值全为 0。</p>
+<p>走廊沿用课件第 14 页的 A → B → T。二维地图按第 15 页的策略迭代循环拓展。默认按到终点的最短步数从近到远逐格评估。同距按行、列顺序排列。每格读取当前工作表，写入后随即供后面的格子使用。Q 模式先读取再一起写入本格的四个动作值。可切到“同步整遍”复现课件第 14 页：同一遍内统一读取上一遍的估计。整张表相邻两遍的最大变化不超过 10⁻⁷ 时，进入策略更新。并列最优时优先保留原方向，其次依上、右、下、左选择。</p>
+</details>
+</main>
+<script>
+/* The two evaluators implement Bellman expectation backups with two update schedules. */
+const WormEngine = (() => {
+  const offsets = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+  const directions = ['up', 'right', 'down', 'left'];
+  const actions = [0, 1, 2, 3];
+  const zeros = () => [0, 0, 0, 0];
+  const oneHot = action => actions.map(index => Number(index === action));
+  const dot = (probability, values) =>
+    probability.reduce((sum, weight, action) => sum + weight * values[action], 0);
+
+  function create(mode, options = {}) {
+    const {
+      map = ['...T', '.#..', '..#.', 'S...'], gamma = 0.9, stepReward = 0,
+      goalReward = 1, initial = 'right', tolerance = 1e-7,
+      wallReward = stepReward,
+    } = options;
+    if (!['V', 'Q'].includes(mode)) throw new Error('Unknown evaluation mode');
+    if (gamma < 0 || gamma >= 1 || tolerance <= 0) throw new Error('Invalid evaluation parameters');
+    const rows = map.length;
+    const cols = map[0].length;
+    if (map.some(row => row.length !== cols)) throw new Error('Invalid grid dimensions');
+    const cells = map.flatMap(row => Array.from(row));
+    const active = cells.map(tile => tile !== '#' && tile !== 'T');
+    const policy = active.map((canAct, cell) => {
+      if (!canAct) return zeros();
+      if (Array.isArray(initial)) return Array.isArray(initial[cell]) ? initial[cell].slice() : oneHot(initial[cell]);
+      if (initial === 'uniform') return [0.25, 0.25, 0.25, 0.25];
+      const action = directions.indexOf(initial);
+      if (action === -1) throw new Error('Unknown initial policy');
+      return oneHot(action);
+    });
+    return {
+      mode, map, rows, cols, cells, active, gamma, stepReward, goalReward, wallReward, tolerance,
+      policy, oldPolicy: null, v: cells.map(() => 0), q: cells.map(zeros),
+      round: 0, sweeps: 0, cursor: 0, delta: null, phase: 'evaluate', changed: [],
+    };
+  }
+
+  function transition(state, cell, action) {
+    if (!state.active[cell]) return {next: cell, reward: 0};
+    const [dy, dx] = offsets[action];
+    const row = Math.floor(cell / state.cols) + dy;
+    const col = cell % state.cols + dx;
+    const next = row * state.cols + col;
+    if (row < 0 || row >= state.rows || col < 0 || col >= state.cols || state.cells[next] === '#') {
+      return {next: cell, reward: state.wallReward};
+    }
+    return {next, reward: state.cells[next] === 'T' ? state.goalReward : state.stepReward};
+  }
+
+  function lookAhead(state, cell, v) {
+    if (!state.active[cell]) return zeros();
+    return actions.map(action => {
+      const {next, reward} = transition(state, cell, action);
+      return reward + state.gamma * v[next];
+    });
+  }
+
+  function scores(state, cell) {
+    return state.mode === 'Q' ? state.q[cell] : lookAhead(state, cell, state.v);
+  }
+
+  function sweep(state) {
+    if (state.phase !== 'evaluate') return state;
+
+    // In Q mode v[s] caches Σ π(a|s) Q(s,a) for the same, unmodified sweep.
+    const q = state.cells.map((_, cell) => lookAhead(state, cell, state.v));
+    const v = q.map((row, cell) => dot(state.policy[cell], row));
+    let delta = 0;
+    state.active.forEach((canAct, cell) => {
+      if (!canAct) return;
+      if (state.mode === 'V') delta = Math.max(delta, Math.abs(v[cell] - state.v[cell]));
+      else actions.forEach(action => {
+        delta = Math.max(delta, Math.abs(q[cell][action] - state.q[cell][action]));
+      });
+    });
+    return {
+      ...state, q, v, delta, sweeps: state.sweeps + 1,
+      phase: delta <= state.tolerance ? 'improve' : 'evaluate',
+    };
+  }
+
+  function updateOne(state, order) {
+    // Update a whole state atomically. In particular, self-loops read the old row.
+    const cell = order[state.cursor];
+    const row = lookAhead(state, cell, state.v);
+    const q = state.q.slice(), v = state.v.slice();
+    q[cell] = row;
+    v[cell] = dot(state.policy[cell], row);
+    const change = state.mode === 'V' ? Math.abs(v[cell] - state.v[cell])
+      : Math.max(...row.map((value, a) => Math.abs(value - state.q[cell][a])));
+    const delta = Math.max(state.cursor ? state.delta : 0, change);
+    const complete = state.cursor + 1 === order.length;
+    return {...state,q,v,delta,cursor:complete ? 0 : state.cursor+1,
+      sweeps:state.sweeps+Number(complete),
+      phase:complete && delta<=state.tolerance ? 'improve' : 'evaluate'};
+  }
+
+  function improve(state) {
+    if (state.phase !== 'improve') return state;
+    const changed = [];
+    const policy = state.policy.map((previous, cell) => {
+      if (!state.active[cell]) return previous;
+      const values = scores(state, cell);
+      const best = Math.max(...values);
+      // Ignore differences below evaluation accuracy. Prefer the incumbent on ties.
+      const tieTolerance = Math.max(1e-12, 2 * state.gamma * state.tolerance / (1 - state.gamma));
+      const tied = actions.filter(action => best - values[action] <= tieTolerance);
+      const incumbent = previous.indexOf(1);
+      const action = tied.includes(incumbent) ? incumbent : tied[0];
+      if (action === incumbent) return previous;
+      changed.push(cell);
+      return oneHot(action);
+    });
+    if (!changed.length) return {...state, changed, oldPolicy: state.policy, phase: 'done'};
+    // Warm-start with the estimates just computed; Q must use the new π for its expectation.
+    const v = state.mode === 'Q' ? state.q.map((row, cell) => dot(policy[cell], row)) : state.v;
+    return {...state, policy, oldPolicy: state.policy, v, changed, round: state.round + 1, sweeps: 0, delta: null, phase: 'evaluate'};
+  }
+  return {create, sweep, updateOne, improve, scores, transition};
+})();
+
+const maps = {world:['...T','.#..','..#.','S...'], line:['S.T']};
+const arrows = ['↑','→','↓','←'];
+// Put a direction marker across each shared edge actually traversed by the route.
+function markRouteEdges(grid, path, cols){
+  const edges=new Map();
+  for(let i=1;i<path.length;i++){
+    const from=path[i-1], to=path[i];
+    if(from===to)continue;
+    const lo=Math.min(from,to), hi=Math.max(from,to), key=lo+','+hi;
+    const mask=(edges.get(key)?.mask??0) | (from===lo?1:2);
+    edges.set(key,{lo,hi,mask});
+  }
+  for(const {lo,hi,mask} of edges.values()){
+    const across=hi-lo===1;
+    const marker=document.createElement('span');
+    marker.setAttribute('aria-hidden','true');
+    marker.className='bridge '+(across?'across':'downward');
+    marker.style.gridColumn=(lo%cols+2)+' / span 1';
+    marker.style.gridRow=(Math.floor(lo/cols)+2)+' / span 1';
+    marker.textContent=(across?['','→','←','↔']:['','↓','↑','↕'])[mask];
+    grid.append(marker);
+  }
+}
+
+const direction = ['上','右','下','左'];
+const sessions = new Map();
+const el = id => document.getElementById(id);
+let mapName = 'world';
+let mode = 'V';
+let schedule = 'reverse';
+let playTimer = null;
+function lessonKey(){return mapName+mode+schedule}
+
+function newSession(){
+  const s = WormEngine.create(mode,{map:maps[mapName],initial:'right'});
+  return {frames:[{stage:0,s,cell:mapName==='line'?1:2}],index:0,pinned:null,action:1};
+}
+function session(){
+  const key=lessonKey();
+  if(!sessions.has(key)) sessions.set(key,newSession());
+  return sessions.get(key);
+}
+function frame(){const view=session();return view.frames[view.index]}
+function sub(n){return String(n).replace(/\d/g,c=>'₀₁₂₃₄₅₆₇₈₉'[Number(c)])}
+function pi(n){return 'π'+sub(n)}
+function fmt(n){return String(Number(n.toFixed(5)))}
+function cellValue(s,cell){return mode==='V'?s.v[cell]:Math.max(...s.q[cell])}
+function changedValue(s,prev,cell){
+  if(mode==='V')return Math.abs(s.v[cell]-prev.v[cell])>1e-9;
+  return s.q[cell].some((x,a)=>Math.abs(x-prev.q[cell][a])>1e-9);
+}
+function coord(s,cell){
+  if(mapName==='line')return ['A','B','T'][cell];
+  return String.fromCharCode(65+cell%s.cols)+(Math.floor(cell/s.cols)+1);
+}
+function actionAt(s,cell){return s.policy[cell].indexOf(1)}
+function selected(f){return session().pinned??f.cell}
+function advance(){
+  const view=session(), f=frame(), s=f.s;
+  if(view.index<view.frames.length-1){view.index++;return}
+  let next;
+  if(f.stage===0) next={...f,stage:1};
+  else if(f.stage===1 || (f.stage===2 && s.phase==='evaluate')){
+    if(schedule==='reverse'){
+      const order=optimalPlan(s).order;
+      next={stage:2,s:WormEngine.updateOne(s,order),prev:s,cell:order[s.cursor]};
+    }else{
+    const updated=WormEngine.sweep(s);
+    // Follow a visible change in the chosen Q action when possible.
+    const changed=updated.active.map((canAct,id)=>canAct&&changedValue(updated,s,id));
+    const first=changed.indexOf(true);
+    const example=mode==='Q'?changed.findIndex((diff,id)=>diff&&updated.q[id][view.action]!==s.q[id][view.action]):first;
+    const cell=example<0?first:example;
+    next={stage:2,s:updated,prev:s,cell:cell>=0?cell:f.cell};
+    }
+  }else if(f.stage===2){
+    const improved=WormEngine.improve(s);
+    next={stage:3,s:improved,prev:s,cell:improved.changed[0]??f.cell};
+  }else if(s.phase!=='done')next={stage:0,s,cell:f.cell};
+  if(next){view.frames.push(next);view.index++}
+}
+function tracePolicy(s){
+  const start=s.cells.indexOf('S'), path=[start], visited=new Set(path);
+  let cell=start;
+  while(s.active[cell]){
+    cell=WormEngine.transition(s,cell,actionAt(s,cell)).next;
+    path.push(cell);
+    if(visited.has(cell))break;
+    visited.add(cell);
+  }
+  return path;
+}
+// A reference for the classroom overlay only. With zero step reward, +1 at
+// the goal, and gamma < 1, any shortest route from S maximizes its return.
+const optimalPlans=new Map();
+function optimalPlan(s){
+  const key=s.map.join('|');
+  if(optimalPlans.has(key))return optimalPlans.get(key);
+  const goal=s.cells.indexOf('T'), start=s.cells.indexOf('S');
+  const predecessors=s.cells.map(()=>[]);
+  s.active.forEach((canAct,id)=>{
+    if(!canAct)return;
+    for(let a=0;a<4;a++){
+      const next=WormEngine.transition(s,id,a).next;
+      if(next!==id)predecessors[next].push(id);
+    }
+  });
+  // Distances to the goal yield an optimal action at every reachable cell.
+  const distance=s.cells.map(()=>Infinity), queue=[goal];
+  distance[goal]=0;
+  for(let i=0;i<queue.length;i++){
+    const id=queue[i];
+    for(const prev of predecessors[id]){
+      if(Number.isFinite(distance[prev]))continue;
+      distance[prev]=distance[id]+1;queue.push(prev);
+    }
+  }
+  const actions=s.cells.map((_,id)=>{
+    if(!s.active[id]||!Number.isFinite(distance[id]))return -1;
+    return [1,0,3,2].find(a=>distance[WormEngine.transition(s,id,a).next]===distance[id]-1);
+  });
+  const path=[start];
+  while(actions[path.at(-1)]>=0){
+    const cell=path.at(-1);
+    path.push(WormEngine.transition(s,cell,actions[cell]).next);
+  }
+  const order=s.cells.map((_,id)=>id).filter(id=>s.active[id])
+    .sort((a,b)=>distance[a]-distance[b] || a-b);
+  const plan={actions,path,order,distance};optimalPlans.set(key,plan);return plan;
+}
+function routeResult(s,path){
+  const last=path.at(-1);
+  if(s.cells[last]==='T')return (path.length-1)+' 步到达 T';
+  if(last===path.at(-2))return '卡在 '+coord(s,last);
+  return '在 '+path.slice(path.indexOf(last)).map(id=>coord(s,id)).join(' → ')+' 循环';
+}
+
+function showReadWrite(source, target){
+  const note=el('transferCue');
+  note.hidden=!source;
+  if(!source)return;
+  note.innerHTML='<span class="cueRead">读</span><span>'+source+'</span><span aria-hidden="true">→</span><span class="cueWrite">写</span><span>'+target+'</span>';
+}
+
+function showModelTransfer(f){
+  if(f.stage!==2 || schedule!=='reverse'){showReadWrite();return}
+  const cell=f.cell, old=f.prev, updated=f.s;
+  const a=mode==='V'?actionAt(old,cell):session().action;
+  const {next}=WormEngine.transition(old,cell,a);
+  const source=old.cells[next]==='T'?'终点 T 的后续值 0':
+    mode==='V'?'V('+coord(old,next)+') = '+fmt(old.v[next]):
+    'Q('+coord(old,next)+', '+arrows[actionAt(old,next)]+') = '+fmt(old.q[next][actionAt(old,next)]);
+  const dest=mode==='V'?'V('+coord(old,cell)+') = '+fmt(updated.v[cell]):
+    'Q('+coord(old,cell)+', '+arrows[a]+') = '+fmt(updated.q[cell][a]);
+  showReadWrite(source,dest);
+}
+function renderMaps(f){
+  showModelTransfer(f);
+  const {s,stage,prev}=f;
+  const values=stage===3?prev:s;
+  const path=tracePolicy(s);
+  const steps=new Map();
+  path.forEach((id,i)=>{if(!steps.has(id))steps.set(id,i)});
+  const optimal=el('optimal').checked?optimalPlan(s):null;
+  const reference=optimal?.path??[];
+  const routeClass=id=>(steps.has(id)?' routePath':'')+(reference.includes(id)?' optimalPath':'');
+  function routeMark(id){
+    if(!steps.has(id))return '';
+    const end=id===path.at(-1)&&s.active[id]?' ↺':'';
+    return '<span class="routeMark">'+steps.get(id)+end+'</span>';
+  }
+  const axis=label=>'<span class="axis">'+label+'</span>';
+  let axes='<span aria-hidden="true"></span>';
+  for(let c=0;c<s.cols;c++)axes+=axis(mapName==='line'?['A','B','T'][c]:String.fromCharCode(65+c));
+  const policies=[axes], numbers=[axes];
+  for(const [id,tile] of s.cells.entries()){
+    if(id%s.cols===0){
+      const row=axis(mapName==='line'?'':Math.floor(id/s.cols)+1);
+      policies.push(row);numbers.push(row);
+    }
+    if(tile==='#'){
+      const wall='<div class="cell wall"><span class="tileText">墙</span></div>';
+      policies.push(wall);numbers.push(wall);continue;
+    }
+    if(tile==='T'){
+      policies.push('<div class="cell goal'+routeClass(id)+'"><span class="tileText">终点 T</span>'+routeMark(id)+'</div>');
+      numbers.push('<div class="cell goal"><span class="tileText">终点 T</span><span class="tileText">'+(mode==='V'?'0':'无动作')+'</span></div>');
+      continue;
+    }
+    const label=coord(s,id), selectedAttrs=' data-cell="'+id+'" aria-pressed="'+(id===selected(f))+'"';
+    const action=actionAt(s,id), turned=stage===3&&s.changed.includes(id);
+    const old=turned?'<span class="oldArrow">原 '+arrows[actionAt(prev,id)]+'</span>':'';
+    const start=tile==='S'?'<span class="origin" aria-hidden="true">起点</span>':'';
+    const bestAction=optimal?.actions[id]??-1;
+    const best=bestAction>=0?'<span class="optArrow">优 '+arrows[bestAction]+'</span>':'';
+    const routeInfo=steps.has(id)?'，执行轨迹第 '+steps.get(id)+' 步':'';
+    policies.push('<button class="cell'+routeClass(id)+(turned?' changed':'')+'"'+selectedAttrs+' aria-label="'+label+'，策略向'+direction[action]+routeInfo+(bestAction>=0?'，最优动作之一向'+direction[bestAction]:'')+'">'+start+'<span class="bigArrow">'+arrows[action]+'</span>'+old+routeMark(id)+best+'</button>');
+    const changed=stage===2&&changedValue(values,prev,id);
+    let valueHtml, desc;
+    if(mode==='V'){
+      valueHtml='<span class="value">'+fmtShort(values.v[id])+'</span>'; desc='V = '+fmt(values.v[id]);
+    }else{
+      valueHtml=values.q[id].map((v,a)=>{
+        const highlight=changed&&Math.abs(v-prev.q[id][a])>1e-9;
+        return '<span class="qval d'+a+(highlight?' written':'')+'">'+fmtShort(v)+'</span>';
+      }).join('');
+      desc=values.q[id].map((v,a)=>direction[a]+' '+fmt(v)).join('，');
+    }
+    const tint='hsl(262 58% '+(98-13*cellValue(values,id))+'%)';
+    const valueStart=tile==='S'?'<span class="origin" aria-hidden="true">S</span>':'';
+    numbers.push('<button class="cell'+(stage===2&&schedule==='reverse'&&id===f.cell?' workCell':'')+(mode==='Q'?' qcell':'')+(changed?' changed':'')+'" style="--tint:'+tint+'"'+selectedAttrs+' aria-label="'+label+'，'+desc+'">'+valueStart+valueHtml+'</button>');
+  }
+  for(const [id,content] of [['grid',policies],['valueGrid',numbers]]){
+    const grid=el(id);grid.style.setProperty('--cols',s.cols);grid.innerHTML=content.join('');
+  }
+  markRouteEdges(el('grid'), path, s.cols);
+  const result=routeResult(s,path);
+  let left=pi(s.round)+' 从起点试走，'+result+'。角标是到达步数。';
+  if(stage===3&&s.changed.length>0){
+    const previous=routeResult(prev,tracePolicy(prev));
+    left=s.changed.length+' 格改向。'+(previous===result?'从起点试走仍'+result+'。':'更新前'+previous+'，现在'+result+'。');
+  }
+  if(stage===3&&s.phase==='done')left='策略已稳定。按箭头从起点出发，'+result+'。';
+  if(reference.length)left+=' 绿字为最优动作之一，虚线为一条 '+(reference.length-1)+' 步的最短路线。';
+  el('legend').textContent=left;
+  const valueTitle=el('valueTitle');
+  if(valueTitle)valueTitle.textContent=mode==='V'?'状态价值 V(s)':'动作价值 Q(s, a)';
+  let right=s.round===0?'初始 '+mode+' 全为 0。':'本轮从上一轮的 '+mode+' 表开始。';
+  if(stage===2)right=s.phase==='improve'?'本遍估计已稳定，可以更新策略。':'本遍着色处的 '+mode+' 已改变，所有更新均读取上一遍的表。';
+  if(schedule==='reverse' && stage===1){
+    const first=optimalPlan(s).order[0];
+    right+=' 下一步从 '+coord(s,first)+' 开始，按距终点的步数由近到远更新。';
+  }
+  if(schedule==='reverse' && stage===2){
+    right='刚写入 '+coord(s,f.cell)+'。';
+    if(s.phase==='improve')right+='整遍最大变化 '+fmt(s.delta)+'，评估已收敛。';
+    else if(s.cursor===0)right+='本遍结束，再扫一遍检查收敛。';
+    else right+='新值已可读取，下一格是 '+coord(s,optimalPlan(s).order[s.cursor])+'。';
+  }
+  if(stage===3)right='保留 '+pi(prev.round)+' 评估结束时的 '+mode+'，供左图选择动作。';
+  if(mode==='Q')right+=' 四侧数值按上、右、下、左排列。';
+  el('valueLegend').textContent=right;
+}
+function fmtShort(v){return String(Number(v.toFixed(2)))}
+function directionPicker(){
+  return '<div class="directions" role="group" aria-label="查看首步动作">'+arrows.map((arrow,a)=>'<button data-action="'+a+'" aria-pressed="'+(session().action===a)+'" aria-label="查看向'+direction[a]+'">'+arrow+'</button>').join('')+'</div>';
+}
+function transitionText(s,cell,a){
+  const {next}=WormEngine.transition(s,cell,a);
+  if(next===cell)return '向'+direction[a]+'遇到墙或边界，留在原格。';
+  return '向'+direction[a]+'走，到达'+(s.cells[next]==='T'?'终点 T':coord(s,next))+'。';
+}
+function formulaBlock(equation, notation){
+  return '<div class="formulaBlock"><p class="math">'+equation+'</p><p class="notation">'+notation+'</p></div>';
+}
+function inspector(f){
+  const {s,stage,prev}=f, cell=selected(f), name=coord(s,cell), a=actionAt(s,cell);
+  const currentPi=pi(s.round);
+  el('focusTitle').textContent='看 '+name+' 格';
+  if(stage===0){
+    return formulaBlock('a = '+currentPi+'(s)', '在状态 s，策略给出当前要走的方向 a。')+'<p class="lead">'+(s.round===0?'初始策略让每个格子都向右走。':'本轮沿用上轮更新后的箭头。')+'</p>'+
+      '<p class="math">'+currentPi+'('+name+') = '+arrows[a]+'</p><p>'+transitionText(s,cell,a)+'</p>';
+  }
+  if(stage===1){
+    const isFirst=s.round===0, action=session().action;
+    const label=mode==='V'?'V('+name+')':'Q('+name+', '+arrows[action]+')';
+    const value=mode==='V'?s.v[cell]:s.q[cell][action];
+    const args=mode==='V'?'(s)':'(s, a)';
+    const init=mode+'<sub>0</sub>'+args+' = '+(isFirst?'0':'上一轮评估结束时的 '+mode+' 值');
+    return formulaBlock(init,'下标 0 表示本轮评估的起点。')+'<p class="lead">'+(isFirst?'第一轮从全零开始。':'把上一轮评估结束时的数值带入本轮。')+'</p>'+
+      (mode==='Q'?directionPicker():'')+'<p class="calculation">'+label+' = '+fmt(value)+'</p><p>这张旧表供第一遍计算读取。</p>';
+  }
+  if(stage===2&&schedule==='reverse'){
+    const action=mode==='V'?a:session().action, args='('+name+(mode==='Q'?', '+arrows[action]:'')+')';
+    const actionButtons=mode==='Q'?directionPicker():'';
+    if(cell!==f.cell){
+      const held=mode==='V'?s.v[cell]:s.q[cell][action];
+      return '<p class="lead">刚才更新的是 '+coord(s,f.cell)+'。选中的 '+name+' 本步保持原值。</p>'+actionButtons+
+        '<p class="calculation">'+mode+args+' = '+fmt(held)+'</p>';
+    }
+    const {next,reward}=WormEngine.transition(prev,cell,action);
+    const order=optimalPlan(s).order, step=prev.cursor;
+    const terminal=s.cells[next]==='T', before=mode==='V'?prev.v[cell]:prev.q[cell][action], after=mode==='V'?s.v[cell]:s.q[cell][action];
+    const source=terminal?'终点后续回报为 0。':
+      (next===cell?'留在本格，先读后写。':
+      order.indexOf(next)<step?'后继格在本遍已写入。':'后继格在本遍尚未写入。')+
+      '读到 '+mode+'('+coord(s,next)+(mode==='Q'?', '+arrows[actionAt(prev,next)]:'')+') = '+fmt(prev.v[next])+'。';
+    const symbol=mode==='V'?'V(s) ← r + γ V(s′)':'Q(s,a) ← r + <span class="term">γ Q(s′, '+currentPi+'(s′))</span>';
+    const key='本遍第 '+(step+1)+' / '+order.length+' 格。读取写入前的工作表'+(mode==='Q'?'，同时写入本格四个 Q。':'，算完即写回。');
+    return formulaBlock(symbol,key)+actionButtons+'<p>'+transitionText(prev,cell,action)+source+'</p>'+
+      '<p class="calculation">'+mode+args+' ← '+fmt(reward)+' + 0.9 × '+fmt(prev.v[next])+' = '+fmt(after)+'</p>'+
+      '<p class="result">本格'+(mode==='Q'?'该动作':'')+'　'+fmt(before)+' → '+fmt(after)+'</p>';
+  }
+  if(stage===2){
+    const action=mode==='V'?a:session().action;
+    const {next,reward}=WormEngine.transition(prev,cell,action);
+    const terminal=s.cells[next]==='T';
+    const after=mode==='V'?s.v[cell]:s.q[cell][action], before=mode==='V'?prev.v[cell]:prev.q[cell][action];
+    const source=terminal?'终点的后续回报为 0。':mode==='V'?'上一遍 V('+coord(s,next)+') = '+fmt(prev.v[next])+'。':
+      '在 '+coord(s,next)+' 按 '+currentPi+' 走 '+arrows[actionAt(s,next)]+'，上一遍的 Q 为 '+fmt(prev.v[next])+'。';
+    const symbol=mode==='V'
+      ? 'V<sub>k+1</sub>(s) = r + γ V<sub>k</sub>(s′)'
+      : 'Q<sub>k+1</sub>(s, a) = r + <span class="term">γ Q<sub>k</sub>(s′, '+currentPi+'(s′))</span>';
+    const key=(mode==='V'?'按 a = '+currentPi+'(s) 走一步':'先选 a 走一步')+'，得到 r，到达 s′。本遍 k = '+prev.sweeps+'。';
+    return formulaBlock(symbol,key)+'<p class="lead">'+(mode==='V'?'沿当前策略':'首步可选，随后按 '+currentPi+' 走')+(mode==='V'?'向'+direction[a]+'走。':'。')+'</p>'+
+      (mode==='Q'?directionPicker():'')+'<p>'+transitionText(prev,cell,action)+source+'</p>'+
+      '<p class="calculation">'+mode+sub(s.sweeps)+'('+name+(mode==='Q'?', '+arrows[action]:'')+') = '+fmt(reward)+' + 0.9 × '+fmt(prev.v[next])+' = '+fmt(after)+'</p>'+
+      '<p class="result">本格'+(mode==='Q'?'该动作':'')+'的估值　'+fmt(before)+' → '+fmt(after)+'</p>';
+  }
+  const scores=WormEngine.scores(prev,cell), old=actionAt(prev,cell);
+  const move=WormEngine.transition(prev,cell,a);
+  const bestCalculation=mode==='V'?'<p class="calculation">'+arrows[a]+'　'+fmt(move.reward)+' + 0.9 × '+fmt(prev.v[move.next])+' = '+fmt(scores[a])+'</p>':'';
+  const candidate=mode==='V'?'[r(s, a) + γ V(s′)]':'Q(s, a)';
+  const greedy=pi(prev.round+1)+'(s) ∈ <span class="term">arg max<sub>a</sub></span> '+candidate;
+  const explanation=(mode==='V'?'每试一个方向 a，就用该方向的奖励和后继格 s′ 的新 V 打分。':'用刚评估好的 Q 给四个方向打分。')+'选得分最高的方向。';
+  return formulaBlock(greedy,explanation)+'<p class="lead">'+(old===a?'保留原方向，仍向'+direction[a]+'走。':'原来向'+direction[old]+'，现在改为向'+direction[a]+'。')+'</p>'+
+    '<table class="scores"><thead><tr><th>动作</th><th>动作价值</th></tr></thead><tbody>'+scores.map((v,i)=>'<tr class="'+(i===a?'best':'')+'"><td>'+arrows[i]+' '+direction[i]+'</td><td>'+fmt(v)+(i===a?'　✓':'')+'</td></tr>').join('')+'</tbody></table>'+bestCalculation;
+}
+function draw(){
+  const f=frame(), {s,stage}=f;
+  const cycle=(stage===3?f.prev.round:s.round)+1;
+  const labels=['当前策略','上一次的 '+mode,'更新 '+mode,'更新策略'];
+  const titles=['看当前策略 '+pi(s.round),'看上一次的 '+mode,'固定 '+pi(s.round)+'，更新 '+mode,'根据新的 '+mode+' 更新策略'];
+  for(const m of ['V','Q']){
+    el('tab'+m).setAttribute('aria-selected',String(mode===m));
+    el('tab'+m).tabIndex=mode===m?0:-1;
+  }
+  el('workspace').setAttribute('aria-labelledby','tab'+mode);
+  el('stages').innerHTML=labels.map((label,i)=>'<span class="stage'+(i===stage?' active':'')+'"'+(i===stage?' aria-current="step"':'')+'><span class="num">'+(i+1)+'</span>'+label+'</span>').join('');
+  el('round').textContent='第 '+cycle+' 轮 · 第 '+(stage+1)+' 步';
+  const perCell=schedule==='reverse';
+  const nSweep=stage===2?f.prev.sweeps+1:0;
+  el('title').textContent=titles[stage]+(stage===2?' · 第 '+nSweep+' 遍'+(perCell?' · '+coord(s,f.cell):''):'');
+  renderMaps(f);
+  el('inspector').innerHTML=inspector(f);
+  const nextLabels=['看上一次的 '+mode+' →','按当前策略更新 '+mode+' →',s.phase==='improve'?'用新 '+mode+' 更新策略 →':'再评估一遍 '+mode+' →',s.phase==='done'?'策略已稳定':'开始下一轮 →'];
+  if(perCell&&(stage===1||stage===2&&s.phase==='evaluate')){
+    nextLabels[stage]='更新 '+coord(s,optimalPlan(s).order[s.cursor])+' 格 →';
+  }
+  el('finishSweep').hidden=!(perCell&&(stage===1 || stage===2&&s.phase==='evaluate'));
+  el('step').textContent=nextLabels[stage];
+  el('step').disabled=stage===3&&s.phase==='done';
+  el('back').disabled=session().index===0;
+  updatePlaybackButton();
+}
+function updatePlaybackButton(){
+  const running=playTimer!==null;
+  el('play').textContent=running?'Ⅱ 暂停':'▶ 自动播放';
+  el('play').setAttribute('aria-pressed',String(running));
+  el('play').disabled=frame().s.phase==='done';
+}
+function stopPlayback(){
+  clearInterval(playTimer);
+  playTimer=null;
+  updatePlaybackButton();
+}
+function startPlayback(){
+  if(frame().s.phase==='done')return;
+  clearInterval(playTimer);
+  session().pinned=null;
+  playTimer=setInterval(()=>{
+    advance();
+    if(frame().s.phase==='done')stopPlayback();
+    draw();
+  },1200/Number(el('speed').value));
+  draw();
+}
+el('play').onclick=()=>{if(playTimer!==null)stopPlayback();else startPlayback()};
+el('speed').onchange=()=>{if(playTimer!==null)startPlayback()};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopPlayback()});
+
+function selectGridCell(event){
+  const btn=event.target.closest('[data-cell]');
+  if(!btn)return;
+  stopPlayback();
+  const id=Number(btn.dataset.cell);
+  session().pinned=id;
+  for(const tile of document.querySelectorAll('#grid [data-cell], #valueGrid [data-cell]')){
+    tile.setAttribute('aria-pressed',String(Number(tile.dataset.cell)===id));
+  }
+  el('inspector').innerHTML=inspector(frame());
+}
+for(const id of ['grid','valueGrid'])el(id).addEventListener('click',selectGridCell);
+el('optimal').onchange=()=>{stopPlayback();renderMaps(frame())};
+el('inspector').addEventListener('click',event=>{
+  const btn=event.target.closest('[data-action]');
+  if(!btn)return;
+  stopPlayback();
+  session().action=Number(btn.dataset.action);
+  showModelTransfer(frame());
+  el('inspector').innerHTML=inspector(frame());
+  el('inspector').querySelector('[data-action="'+session().action+'"]').focus({preventScroll:true});
+});
+for(const m of ['V','Q']){
+  el('tab'+m).onclick=()=>{stopPlayback();mode=m;draw()};
+  el('tab'+m).onkeydown=e=>{
+    if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+    e.preventDefault();
+    stopPlayback();
+    mode=e.key==='Home'?'V':e.key==='End'?'Q':mode==='V'?'Q':'V';
+    draw();el('tab'+mode).focus();
+  };
+}
+el('schedule').onchange=e=>{stopPlayback();schedule=e.target.value;draw()};
+el('finishSweep').onclick=()=>{
+  stopPlayback();
+  const target=frame().s.sweeps+1;
+  while(frame().s.sweeps<target && frame().s.phase==='evaluate')advance();
+  draw();
+};
+el('map').onchange=e=>{stopPlayback();mapName=e.target.value;draw()};
+el('step').onclick=()=>{stopPlayback();advance();draw()};
+el('back').onclick=()=>{stopPlayback();if(session().index>0)session().index--;draw()};
+el('reset').onclick=()=>{stopPlayback();sessions.set(lessonKey(),newSession());draw()};
+draw();
+
+</script>
+</body>
+</html>

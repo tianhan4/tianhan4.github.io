@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WormWorld · 基于样本的策略迭代</title>
+<style>
+:root {
+  color-scheme: light;
+  --ink:#241e33; --muted:#625c70; --purple:#56368f; --violet:#6a45a9;
+  --paper:#f7f6fa; --line:#d8d3e1; --soft:#eee8f6; --green:#1c6247;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,Menlo,monospace;
+  font:20px/1.42 Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  color:var(--ink); background:var(--paper);
+}
+*{box-sizing:border-box}
+body{margin:0}
+[hidden]{display:none!important}
+h1,h2,h3,p{margin:0}
+button,select{font:inherit;color:inherit}
+button,select,summary{cursor:pointer}
+button,select{background:#fff;border:1px solid var(--line);border-radius:8px}
+button{padding:7px 14px;font-weight:560}
+button:hover:not(:disabled),select:hover{border-color:var(--violet);background:var(--soft)}
+button:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #8862c1;outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+main{max-width:1460px;margin:auto;padding:14px clamp(16px,3.4vw,54px) 22px}
+.topline,.settings,.tabs,.headline,.controls,.directions,.sweepnav{display:flex;align-items:center}
+.topline{justify-content:space-between;gap:18px;min-height:46px}
+h1{font-size:clamp(24px,2.25vw,36px);font-weight:690;letter-spacing:-.04em;line-height:1.15}
+h1 em{color:var(--purple);font-family:Georgia,serif;font-weight:600}
+.settings{gap:13px;flex-wrap:wrap}
+.settings label{display:flex;align-items:center;gap:5px;font-size:16px;color:var(--muted)}
+.settings select{padding:5px 7px;font-size:17px;min-height:38px}
+.tabs{gap:2px;background:#e9e6ee;border-radius:9px;padding:3px}
+.tabs button{padding:4px 12px;border-color:transparent;background:transparent;min-height:34px;font-size:17px;white-space:nowrap}
+.tabs button[aria-selected="true"],.tabs .active{background:white;color:var(--purple);box-shadow:0 1px 3px #25153b20}
+#stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;list-style:none;margin:15px 0 0;padding:0;border-radius:9px;overflow:hidden;background:var(--line);border:1px solid var(--line)}
+.stage{display:flex;align-items:center;justify-content:center;gap:9px;font-size:clamp(17px,1.55vw,23px);font-weight:580;color:#625a70;background:#f0edf4;padding:9px 4px;line-height:1.25;min-width:0}
+.stage.active,.stage[aria-current="step"]{color:white;background:var(--purple)}
+.stage .num{width:1.45em;height:1.45em;display:inline-grid;place-items:center;flex-shrink:0;border-radius:100%;font:600 .84em/1 var(--mono);background:#e0dbe9}
+.stage.active .num,.stage[aria-current="step"] .num{background:#fff;color:var(--purple)}
+.headline{gap:14px;flex-wrap:wrap;margin:14px 0 9px}
+#round{color:var(--purple);font-size:17px;font-weight:650}
+#title{font-size:clamp(27px,2.55vw,40px);line-height:1.22;letter-spacing:-.025em}
+.scene{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);align-items:start;gap:clamp(12px,1.8vw,28px)}
+.board,.scene aside{min-width:0;background:white;border:1px solid var(--line);border-radius:12px}
+.board{padding:9px 14px 10px}
+.matrix{display:grid;grid-template-columns:20px repeat(var(--cols),minmax(0,1fr));gap:5px}
+.axis{display:grid;align-items:center;justify-items:center;font:600 16px/1.2 var(--mono);color:var(--muted)}
+.cell{min-width:0;position:relative;display:grid;place-content:center;justify-items:center;isolation:isolate;height:clamp(74px,11.9vh,125px);padding:0;line-height:1;border:1px solid var(--line);border-radius:8px;background-color:var(--tint,#f8f6fb);overflow:hidden;text-align:center;font-variant-numeric:tabular-nums}
+button.cell:hover{background-color:var(--tint,#f8f6fb);border-color:var(--violet)}
+.cell[aria-pressed="true"],.cell.selected{outline:3px solid var(--violet);outline-offset:-3px;z-index:1}
+.bigArrow{font:620 clamp(48px,4.1vw,72px)/.98 system-ui;color:var(--purple)}
+.value{font:620 clamp(38px,3.7vw,60px)/1 var(--mono);letter-spacing:-.07em}
+.cell.changed{background-color:#fff3df;box-shadow:inset 0 -4px #bc801d}
+.cell.changed .bigArrow{color:#915200}
+.oldArrow,.origin{position:absolute;top:5px;font-size:15px;line-height:1.1}
+.oldArrow{right:7px;color:#765926}
+.origin{left:7px;font-weight:600;color:var(--purple)}
+.wall{background:repeating-linear-gradient(135deg,#e3e0e8 0 2px,#efedf2 2px 9px);color:#635e69}
+.goal{background-color:#e7f4eb;color:var(--green)}
+.tileText,.goal b,.wall span{font-size:clamp(18px,1.65vw,26px);font-weight:650;line-height:1.15}
+.goal small{font-size:16px}
+.qcell{background-image:linear-gradient(to top right,transparent 49.3%,#cbc4d9 50%,transparent 50.7%),linear-gradient(to bottom right,transparent 49.3%,#cbc4d9 50%,transparent 50.7%)}
+.qval{position:absolute;font:590 clamp(20px,1.82vw,29px)/1 var(--mono);letter-spacing:-.07em;color:var(--ink)}
+.qval.d0,.qval.d2{left:50%;transform:translateX(-50%)}
+.qval.d0{top:5%}.qval.d2{bottom:5%}
+.qval.d1,.qval.d3{top:50%;transform:translateY(-50%)}
+.qval.d1{right:3%}.qval.d3{left:3%}
+#legend{margin:7px 0 0 25px;color:var(--muted);font-size:17px;line-height:1.35}
+.scene aside{padding:clamp(14px,1.6vw,24px)}
+#focusTitle{font-size:clamp(21px,1.95vw,30px);line-height:1.25;margin-bottom:10px;letter-spacing:-.02em}
+#inspector{overflow-wrap:anywhere;font-size:clamp(20px,1.6vw,24px)}
+#inspector > * + *{margin-top:10px}
+#inspector p + p{margin-top:8px}
+.lead{line-height:1.5}
+.math,.calculation{font-family:"STIX Two Text",Georgia,"PingFang SC","Microsoft YaHei",serif;line-height:1.45;font-variant-numeric:tabular-nums}
+.math{font-size:clamp(22px,2vw,30px)}
+.calculation,.result{border-left:4px solid var(--violet);background:#f3eef9;color:#443255;padding:8px 12px;font-size:clamp(22px,1.95vw,29px)}
+.directions,.sweepnav{flex-wrap:wrap;gap:6px}
+.directions button,.sweepnav button{padding:4px 10px;min-height:39px;font-size:18px}
+.directions [aria-pressed="true"]{background:var(--purple);border-color:var(--purple);color:white}
+.scores,table.scores,.scores table{width:100%;font-variant-numeric:tabular-nums}
+table.scores,.scores table{border-collapse:collapse;font-size:20px}
+.scores th,.scores td{border-bottom:1px solid var(--line);padding:3px 5px;text-align:left}
+.scores th{font-size:17px;color:var(--muted);font-weight:560}
+.scores .best{font-weight:690;color:var(--purple);background:#f2edf7}
+.controls{flex-wrap:wrap;justify-content:center;gap:12px;margin-top:12px}
+.controls button{min-height:46px}
+#step{background:var(--purple);border-color:var(--purple);color:white;padding-inline:24px}
+#step:hover:not(:disabled){background:#493078}
+#reset{border-color:transparent;background:transparent;color:var(--muted)}
+#rules{font-size:16px;color:var(--muted);margin-top:14px;max-width:100ch}
+#rules summary{font-weight:600}
+#rules p{margin-top:6px}
+sub,sup{line-height:0}
+@media(min-width:901px) and (max-height:740px){
+  main{padding-top:9px}.topline{min-height:40px}
+  #stages{margin-top:8px}.stage{padding-block:7px}
+  .headline{margin:10px 0 7px}.board{padding:6px 11px 8px}
+  .cell{height:clamp(68px,11.25vh,83px)}
+  .controls{margin-top:9px}
+}
+@media(max-width:900px){
+  main{padding-inline:14px}.scene{grid-template-columns:minmax(0,1.4fr) minmax(245px,1fr);gap:10px}
+  .board{padding:7px}.matrix{gap:3px;grid-template-columns:14px repeat(var(--cols),minmax(0,1fr))}
+  .scene aside{padding:13px}.settings{gap:6px}.settings select,.tabs button{font-size:15px}
+  .qval{font-size:clamp(15px,2vw,18px)}.settings label{font-size:15px}
+}
+@media(max-width:700px){
+  main{padding:10px}.topline{align-items:flex-start;flex-direction:column;gap:8px}.settings{width:100%;justify-content:space-between}
+  #stages{margin-top:12px}.stage{font-size:15px;gap:3px;text-align:center;min-height:42px}.stage .num{width:1.35em;height:1.35em}
+  .scene{grid-template-columns:1fr}.headline{gap:8px}.cell{height:clamp(72px,16vw,94px)}
+  .qval{font-size:clamp(15px,3.5vw,23px)}
+  #legend{margin-left:17px;font-size:16px}.controls{gap:6px}.controls button{padding:6px 11px;font-size:18px}
+}
+@media(max-width:400px){
+  main{padding:8px}.stage{flex-direction:column;font-size:14px;padding:4px 1px}
+  .cell{height:68px}.origin,.oldArrow{font-size:11px}.qval{font-size:clamp(12px,3.45vw,14px)}
+  .bigArrow{font-size:46px}.value{font-size:clamp(29px,8.4vw,34px)}
+  .tileText,.goal b,.wall span{font-size:17px}.settings{gap:3px}.settings select{max-width:158px}
+  .tabs button,.settings select{padding-inline:5px}.controls{gap:4px}#step{padding-inline:12px}
+}
+.formulaBlock{padding:9px 12px;border-left:4px solid var(--violet);background:var(--soft);border-radius:0 6px 6px 0}
+.formulaBlock .math{color:#412665;font-size:clamp(22px,1.88vw,30px);line-height:1.48}.formulaBlock .math sub{font-size:.68em}.notation{color:var(--muted);font-size:clamp(16px,1.35vw,20px)}.formulaBlock .notation{margin-top:4px}.term{display:inline-block}
+.sample-kicker{color:var(--purple);font-size:16px;font-weight:650}
+.board .cell.visited{background:#eee7f8}
+.cell.depart{background:#fff0d5;border-color:#b68a41}
+.cell.arrive{box-shadow:inset 0 0 0 3px #46946e;background:#e5f5e9}
+.cell .worm{font:clamp(27px,3vw,42px)/1 system-ui}
+.cell .trailArrow{font:600 clamp(34px,3.9vw,52px)/1 system-ui;color:#9076b4}
+.cell.depart .trailArrow{color:#885410}
+.cell .tileText.small{font-size:16px}
+.cell .qval.written{color:#7c4300;background:#ffe4ab;border-radius:4px;padding:0 2px;font-weight:750}
+.cell .qval.unknown{color:#89818e}
+.cell.flash{box-shadow:inset 0 -4px #c5903d}
+.controls #skip{font-size:17px;color:var(--purple)}
+#trace{margin-top:16px;border-top:1px solid var(--line);padding-top:8px;font-size:17px}
+#trace summary,#rules summary{font-weight:600}
+.traceWrap{max-height:265px;overflow:auto;margin:10px 0}
+.traceWrap table{width:min(100%,800px);font-variant-numeric:tabular-nums;border-collapse:collapse}
+.traceWrap th,.traceWrap td{text-align:left;padding:5px;border-bottom:1px solid var(--line)}
+.traceWrap .now{background:#ede6f8}
+.math .keep{display:inline-block}
+#inspector .calculation{font-size:clamp(20px,1.8vw,26px);overflow-wrap:anywhere}
+#inspector .soft{background:#f4f0f9;color:#513a6b;border-radius:6px;padding:6px 10px}
+#inspector .sampleObs{font:600 clamp(24px,2.5vw,35px)/1.35 var(--mono);color:#53378a}
+#focusTitle{margin-bottom:9px}
+#legend{min-height:1.3em}
+#inspectInfo{font-size:17px;color:var(--muted);margin-top:8px}
+.pattern{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prob{display:inline-flex;align-items:center;gap:4px;background:#f3f0f6;padding:2px 6px;border-radius:5px;font-size:17px}
+.prob.main{color:var(--purple);background:#e7dcf5;font-weight:650}
+@media(max-width:700px){.sample-kicker{font-size:14px}.controls #skip{font-size:15px}#trace{font-size:15px}}
+@media(max-width:400px){.cell .tileText.small{font-size:12px}.sample-kicker{font-size:13px}.cell .qval.written{padding:0}.cell.arrive .worm{font-size:24px}}
+.controls{gap:8px}.controls #play[aria-pressed=true]{background:#eee6fc;border-color:var(--violet)}.speedLabel{color:var(--muted);font-size:17px;white-space:nowrap}.speedLabel select{padding:7px 4px;min-height:42px}.routeCheck{color:var(--purple);font-weight:650}.routeCheck small{font-size:inherit;color:var(--muted);font-weight:normal}.formulaBlock .factor{display:inline-block}.compactTD .math{font-size:clamp(20px,1.62vw,26px)}.compactTD .sample{font-size:clamp(18px,1.5vw,22px);margin:6px 0}.compactTD .calculation{margin:5px 0 8px}.compactTD .formulaBlock{padding-block:6px}
+@media(max-width:700px){.settings{justify-content:start}.speedLabel{font-size:15px}.settings label{font-size:14px}}
+/* Keep the two views on the same row and align their coordinate axes. */
+.scene.boards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:clamp(10px,1.5vw,24px)}
+.boards .board{display:flex;flex-direction:column;padding:10px 13px 10px}
+.boardHeading{display:flex;align-items:center;justify-content:space-between;gap:7px;min-height:39px;margin-bottom:4px}
+.boardHeading h3{font-size:clamp(19px,1.78vw,27px);letter-spacing:-.025em;line-height:1.2}
+.referenceSwitch{display:inline-flex;align-items:center;gap:5px;color:#17644f;font-size:clamp(13px,1.15vw,17px);white-space:nowrap;cursor:pointer}
+.referenceSwitch input{width:16px;height:16px;accent-color:#24755c;cursor:pointer}
+#valueMode{font-size:clamp(14px,1.2vw,18px);padding:3px 6px;max-width:55%}
+.boards .matrix{margin-top:2px}.boards .cell{height:clamp(69px,10.6vh,112px)}
+.boards .bigArrow{font-size:clamp(42px,3.8vw,62px)}
+.boards .value{font-size:clamp(34px,3.15vw,55px)}
+.boards .qval{font-size:clamp(19px,1.7vw,28px)}
+#grid .cell.routePath{background-color:#ece6f8}
+#grid .cell.changed{background-color:#fff0d9}
+#grid .cell.goal{background-color:#e6f4e9}
+#grid .cell.optimalPath::after{content:"";position:absolute;inset:4px;border:1.5px dashed #429378;border-radius:5px;pointer-events:none}
+#grid .cell.arrive{box-shadow:inset 0 0 0 3px #317a61}
+#grid .cell.arrive .bigArrow{color:#20664d}
+#grid .optArrow,#grid .routeMark,#grid .origin,#grid .oldArrow{z-index:1}
+#grid .optArrow{position:absolute;bottom:6px;left:7px;padding:1px 4px;border-radius:4px;background:#e4f3ec;color:#165e48;font:650 clamp(11px,1vw,15px)/1.18 system-ui}
+#grid .routeMark{position:absolute;bottom:6px;right:7px;min-width:18px;padding:2px 4px;border-radius:5px;background:#6a529d;color:white;font:650 clamp(11px,1vw,15px)/1 var(--mono)}
+#valueGrid .qval.written{color:#753e00;background:#ffe2a8;border-radius:4px;font-weight:750}
+#valueGrid .qval.unknown{color:#827d88}
+#valueGrid .cell.changed{background-color:#fff3df}
+#legend,#valueLegend{margin:8px 0 0 21px;font-size:clamp(15px,1.22vw,19px);line-height:1.4;color:var(--muted)}
+.formulaTray{margin-top:14px;border-top:1px solid var(--line);padding:12px 0 0}
+#focusTitle{color:var(--purple);font-size:clamp(19px,1.6vw,25px);margin:0 0 8px}
+.formulaTray #inspector{background:#fff;padding:12px 16px;border:1px solid var(--line);border-radius:10px;font-size:clamp(18px,1.45vw,23px)}
+.formulaTray #inspector > * + *{margin-top:7px}
+@media(min-width:950px){
+ .formulaTray #inspector{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 18px;align-items:start}
+ .formulaTray #inspector > * + *{margin-top:0}
+ .formulaTray .compactTD{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:center;gap:6px 18px}
+ .formulaTray .compactTD .sample{grid-column:1/-1}
+ .formulaTray .compactTD .calculation{margin:0}
+ .formulaTray .scores{grid-column:2;grid-row:1/4}
+}
+@media(min-width:741px) and (max-height:760px){.boards .cell{height:clamp(60px,9.35vh,77px)}.boardHeading{min-height:32px}}
+@media(max-width:900px){.boards .board{padding:7px}.boards .bigArrow{font-size:40px}.boards .value{font-size:32px}.boards .qval{font-size:clamp(14px,2vw,19px)}}
+@media(max-width:700px) and (min-width:601px){.boardHeading{align-items:start;flex-direction:column;min-height:59px}.boards .qval{font-size:13px}.boards .cell{height:74px}}
+@media(max-width:600px){
+ .scene.boards{grid-template-columns:1fr;gap:9px}
+ .boards .board{padding:6px 8px 8px}.boardHeading{min-height:32px;margin-bottom:0}
+ .boards .cell{height:clamp(47px,12.5vw,69px)}
+ .boards .bigArrow{font-size:clamp(27px,7.4vw,40px)}.boards .value{font-size:clamp(24px,6.8vw,33px)}
+ .boards .qval{font-size:clamp(12px,3.25vw,17px)}
+ #legend,#valueLegend{margin:5px 0 0 14px;font-size:14px}
+ #grid .routeMark{bottom:3px;right:4px;min-width:13px}
+ #grid .optArrow{bottom:3px;left:4px;padding:0 2px}
+ #grid .cell.optimalPath::after{inset:2px}
+ .boards .origin,.boards .oldArrow{font-size:10px;top:3px}
+ .formulaTray #inspector{padding:10px}
+}
+
+
+#grid{position:relative}
+.bridge{position:absolute;z-index:3;pointer-events:none;display:grid;place-items:center;width:16px;height:14px;background:#f0eaf9;color:#50307e;border-radius:3px;font:700 13px/1 system-ui}
+.bridge.across{right:-2.5px;top:50%;transform:translate(50%,-50%)}
+.bridge.downward{bottom:-2.5px;left:50%;transform:translate(-50%,50%)}
+.boards .qcell{container-type:size}
+.boards .qval{font-size:min(19cqw,30cqh,28px)}
+.boards .qval.d0,.boards .qval.d2{transform:translate(-50%,-50%);bottom:auto}
+.boards .qval.d0{top:16.66%}.boards .qval.d2{top:83.33%}
+
+#transferCue{display:flex;align-items:baseline;gap:4px 7px;flex-wrap:wrap;margin:8px 0 0 20px;color:#453260;font:550 clamp(15px,1.3vw,20px)/1.35 system-ui;font-variant-numeric:tabular-nums}
+#transferCue[hidden]{display:none}
+#transferCue .cueRead,#transferCue .cueWrite{border-radius:3px;font:650 13px/1.45 system-ui;padding:0 4px}
+#transferCue .cueRead{background:#eee8f8;color:#50377a}#transferCue .cueWrite{background:#ffe7b5;color:#674500}
+@media(max-width:600px){#transferCue{margin-left:14px;font-size:15px}}
+</style>
+</head>
+<body>
+<main>
+<header class="topline">
+  <h1><em>WormWorld</em> 样本策略迭代</h1>
+  <div class="settings"><label>更新方法 <select id="mode"><option value="td">SARSA · 一步目标</option><option value="mc">Monte Carlo · 完整回报</option></select></label>
+    <label id="orderLabel">回放顺序 <select id="replayOrder"><option value="reverse">倒序 · 终点向前</option><option value="forward">正序 · 起点向后</option></select></label>
+    <select id="map" aria-label="选择地图"><option value="world">二维小虫地图</option><option value="line">课件走廊 A → B → T</option></select>
+  </div>
+</header>
+<nav id="stages" aria-label="一个回合的四步"></nav>
+<section id="workspace">
+  <div class="headline"><span id="round"></span><h2 id="title" aria-live="polite"></h2></div>
+  <div class="scene boards">
+    <section class="board" aria-label="左图，策略与执行轨迹">
+      <div class="boardHeading"><h3>策略与执行轨迹</h3><label class="referenceSwitch"><input type="checkbox" id="optimal" checked>最优策略对照</label></div>
+      <div id="grid" class="matrix" role="group" aria-label="策略地图，选择格子"></div><p id="legend"></p>
+    </section>
+    <section class="board" aria-label="右图，价值估计">
+      <div class="boardHeading"><h3 id="valueTitle">价值估计</h3><select id="valueMode" aria-label="右图的价值函数"><option value="q">Q 动作价值</option><option value="v">V 状态价值</option></select></div>
+      <div id="valueGrid" class="matrix" role="group" aria-label="价值地图，选择格子"></div><p id="transferCue" hidden></p><p id="valueLegend"></p>
+    </section>
+  </div>
+  <footer class="controls"><button id="back">← 上一步</button><button id="step"></button><button id="skip" hidden></button><button id="play" aria-pressed="false">▶ 自动播放</button><label class="speedLabel">速度 <select id="speed" aria-label="播放速度"><option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option><option value="16">16×</option></select></label><button id="reset">重新开始</button></footer>
+    <aside class="formulaTray" aria-label="选中格子的公式推算"><h3 id="focusTitle"></h3><div id="inspector"></div><p id="inspectInfo"></p></aside>
+</section>
+<details id="trace"><summary id="traceTitle">本回合样本记录</summary><div id="records"></div></details>
+<details id="rules"><summary>采样规则与课件对应</summary>
+<p>每回合从 S 出发，到终点 T 才结束。普通移动和撞墙奖励为 0，进入 T 得 +1，γ = 0.9。地图负责返回观察到的下一格和奖励；学习器只用实际采到的记录估计 Q。同一格的四个动作各有一个 Q 估计，改进策略时可以直接比较它们。固定随机种子，方便回退、重播同一堂课。</p>
+<p>每回合固定当前策略 π。每次行动有 60% 的概率直接选主方向，40% 的概率从四个方向均匀抽取，所以主方向总概率为 70%，其他各为 10%。Q 初始为 0。二维地图的初始主方向会陷入环路，走廊的初始箭头都向左。</p>
+<p><b>SARSA</b> 固定本回合的策略，先从起点采到终点，再回放本回合的样本。默认从最后一步向前更新 Q。每条记录仍读取实际采到的下一状态和下一动作，从当前工作表取其最新 Q，一次写入一个状态动作对。也可切换为正序回放，同一首回合样本可以逐步对照。对应的 Bellman 期望关系为 Q<sup>π</sup>(s,a) = E<sub>π</sub>[Rₜ₊₁ + γ Q<sup>π</sup>(Sₜ₊₁,Aₜ₊₁) | Sₜ=s, Aₜ=a]。每条实测转移给出一个样本目标；N 记录该状态动作对累计更新的次数。终点的后续估值为 0。两种方法都在回合末更新主方向。</p>
+<p><b>Monte Carlo</b> 在回合结束后，倒序计算每一步的实际折扣回报。同一状态和动作在本回合只取时间上首次出现的回报。N 是该状态和动作已贡献过样本的回合数。跨回合累积样本均值，再按估计的 Q 更新主方向；并列最大时优先保留原方向。单回合估计会波动，箭头暂时不变时仍可继续采样。</p>
+<p>对应第十章第 15 页的策略评估与改进、第 17 页的样本学习、第 18 页的完整回报，以及第 20 页的 ε-greedy 探索和第 21 页的 SARSA 一步目标。主方向试走仅供课堂观察，它关闭随机探索，从起点执行地图上的箭头，遇到重复格即说明会循环。学习器的更新只读取实际采样记录和 Q 表。</p></details>
+</main>
+<script>
+/* SampleWorld.sample is the only learning-loop operation that consults the environment.
+   learn() reads just the observed episode. improve() reads just action values. */
+const SampleWorld = (() => {
+  const maps = {world:['...T','.#..','..#.','S...'], line:['S.T']};
+  const directions = [[-1,0],[0,1],[1,0],[0,-1]];
+  const epsilon = 0.4, gamma = 0.9;
+  const seeds = {world:466368,line:89931};
+
+  
+
+  function create(mapName) {
+    const map = maps[mapName], cells = [...map.join('')];
+    return {mapName, map, cells, rows:map.length, cols:map[0].length, epsilon, gamma,
+      start:cells.indexOf('S'), goal:cells.indexOf('T'), round:0,
+      q:cells.map(() => [0,0,0,0]), counts:cells.map(() => [0,0,0,0]),
+      policy:cells.map(tile => tile === '#' || tile === 'T' ? -1 : (mapName==='line'?3:1)), changed:[]};
+  }
+
+  function probability(state, s, a) {
+    return state.policy[s] < 0 ? 0 : state.epsilon / 4 + (state.policy[s] === a ? 1 - state.epsilon : 0);
+  }
+
+  // Mulberry32. Per-episode seeds make a replay independent of UI navigation.
+  function randomStream(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let value = Math.imul(seed ^ seed >>> 15, seed | 1);
+      value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+      return ((value ^ value >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function environmentStep(state, s, a) {
+    const [dy,dx] = directions[a];
+    const y = Math.floor(s/state.cols) + dy, x = s%state.cols + dx;
+    const inBounds = 0 <= x && x < state.cols && 0 <= y && y < state.rows;
+    const next = inBounds && state.cells[y*state.cols+x] !== '#' ? y*state.cols+x : s;
+    return {s,a,r:Number(next === state.goal),next};
+  }
+
+  function sample(state) {
+    const random = randomStream(seeds[state.mapName] + Math.imul(state.round, 0x9e3779b9));
+    const episode = [];
+    let s = state.start;
+    while (s !== state.goal) {
+      const a = random() < state.epsilon ? Math.floor(4*random()) : state.policy[s];
+      const observation = environmentStep(state,s,a);
+      episode.push(observation);
+      s = observation.next;
+    }
+    return episode;
+  }
+
+  function learn(state, episode) {
+    const returns = new Array(episode.length);
+    let g = 0;
+    for (let t = episode.length-1; t >= 0; t--) {
+      g = episode[t].r + state.gamma*g;
+      returns[t] = g;
+    }
+
+    const q = state.q.map(row => row.slice()), counts = state.counts.map(row => row.slice());
+    const visited = new Set(), updates = [];
+    for (let t = 0; t < episode.length; t++) {
+      const {s,a} = episode[t], key = 4*s+a;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      const old = q[s][a], countBefore = counts[s][a], countAfter = countBefore+1;
+      const value = old + (returns[t]-old)/countAfter;
+      q[s][a] = value;
+      counts[s][a] = countAfter;
+      updates.push({t,s,a,g:returns[t],old,countBefore,countAfter,value});
+    }
+    return {state:{...state,q,counts},returns,updates};
+  }
+
+  function improve(state) {
+    const changed = [];
+    const policy = state.policy.map((previous,s) => {
+      if (previous < 0) return previous;
+      const best = Math.max(...state.q[s]);
+      if (state.q[s][previous] === best) return previous;
+      changed.push(s);
+      return state.q[s].indexOf(best);
+    });
+    return {...state,policy,changed,round:state.round+1};
+  }
+  // Classroom diagnostic only. Neither learning rule receives this route.
+  function probePolicy(state) {
+    const route=[state.start], seen=new Set(route);
+    while(route.at(-1)!==state.goal){
+      const s=route.at(-1), next=environmentStep(state,s,state.policy[s]).next;
+      route.push(next);
+      if(seen.has(next))break;
+      seen.add(next);
+    }
+    return route;
+  }
+  return {maps,create,probability,sample,learn,improve,probePolicy};
+})();
+// Put a direction marker across each shared edge actually traversed by the route.
+function markRouteEdges(grid, path, cols){
+  const edges=new Map();
+  for(let i=1;i<path.length;i++){
+    const from=path[i-1], to=path[i];
+    if(from===to)continue;
+    const lo=Math.min(from,to), hi=Math.max(from,to), key=lo+','+hi;
+    const mask=(edges.get(key)?.mask??0) | (from===lo?1:2);
+    edges.set(key,{lo,hi,mask});
+  }
+  for(const {lo,hi,mask} of edges.values()){
+    const across=hi-lo===1;
+    const marker=document.createElement('span');
+    marker.setAttribute('aria-hidden','true');
+    marker.className='bridge '+(across?'across':'downward');
+    marker.style.gridColumn=(lo%cols+2)+' / span 1';
+    marker.style.gridRow=(Math.floor(lo/cols)+2)+' / span 1';
+    marker.textContent=(across?['','→','←','↔']:['','↓','↑','↕'])[mask];
+    grid.append(marker);
+  }
+}
+
+const directions = ['上','右','下','左'];
+const arrows = ['↑','→','↓','←'];
+// Replay one complete terminal episode sampled under a fixed behavior policy.
+// Each backup reads the Q table just before this observation is applied.
+function learnTD(state, episode, order='reverse') {
+  const q = state.q.map(row => row.slice());
+  const counts = state.counts.map(row => row.slice());
+  const updates = [];
+  for (let k = 0; k < episode.length; k++) {
+    const t = order === 'reverse' ? episode.length - 1 - k : k;
+    const {s, a, r, next} = episode[t];
+    const terminal = t === episode.length - 1;
+    const nextAction = terminal ? null : episode[t + 1].a;
+    const old = q[s][a];
+    const nextQ = terminal ? 0 : q[next][nextAction];
+    const target = r + state.gamma * nextQ;
+    const countBefore = counts[s][a];
+    const countAfter = countBefore + 1;
+    const value = old + (target - old) / countAfter;
+    q[s][a] = value;
+    counts[s][a] = countAfter;
+    updates.push({t, s, a, next, nextAction, r, nextQ, target, old,
+      countBefore, countAfter, value, terminal});
+  }
+  return {state:{...state, q, counts}, updates};
+}
+
+let mode='td', replayOrder='reverse', timer=null;
+function backward(){return mode==='mc' || replayOrder==='reverse'}
+const sessions = new Map();
+const el = id => document.getElementById(id);
+let mapName = 'world';
+
+function newLesson(){
+  return {rounds:[{start:SampleWorld.create(mapName)}],round:0,cursor:0,pin:null};
+}
+function lessonKey(){return [mapName,mode,backward()?'reverse':'forward'].join('/')}
+function lesson(){
+  const key=lessonKey();
+  if(!sessions.has(key)) sessions.set(key,newLesson());
+  return sessions.get(key);
+}
+function current(){const v=lesson(); return v.rounds[v.round]}
+function stageOf(c,n){if(c===0)return 0;if(c<=n)return 1;if(c<=2*n)return 2;return 3}
+function fmt(n){return String(Number(n.toFixed(5)))}
+function short(n){return String(Number(n.toFixed(2)))}
+function sub(i){return String(i).replace(/\d/g,c=>'₀₁₂₃₄₅₆₇₈₉'[Number(c)])}
+function pi(s){return 'π'+sub(s.round)}
+function nameOf(s,id){
+  if(s.mapName==='line')return ['A','B','T'][id];
+  return String.fromCharCode(65+id%s.cols)+(1+Math.floor(id/s.cols));
+}
+function pct(x){return Math.round(100*x)+'%'}
+function numRelation(...terms){return terms.some(x=>Math.abs(Number(fmt(x))-x)>1e-9)?' ≈ ':' = '}
+function prepare(round){
+  if(round.ep)return;
+  round.ep=SampleWorld.sample(round.start);
+  round.learned=mode==='td'?learnTD(round.start,round.ep,replayOrder):SampleWorld.learn(round.start,round.ep);
+  round.end=SampleWorld.improve(round.learned.state);
+  round.byTime=new Map(round.learned.updates.map(u=>[u.t,u]));
+}
+function advance(){
+  const view=lesson(), round=current();
+  prepare(round);
+  if(view.cursor<2*round.ep.length+1) view.cursor++;
+  else{
+    view.round++;
+    if(!view.rounds[view.round]) view.rounds.push({start:round.end});
+    view.cursor=0;
+  }
+  view.pin=null;
+}
+function back(){
+  const v=lesson();
+  if(v.cursor>0)v.cursor--;
+  else if(v.round>0){v.round--;v.cursor=2*current().ep.length+1}
+  v.pin=null;
+}
+// Reveal only processed edits; repeated TD writes must be applied in replay order.
+function visibleTables(round,stage,t){
+  if(stage===3)return round.learned.state;
+  if(stage!==2)return round.start;
+  const q=round.start.q.map(row=>row.slice()), counts=round.start.counts.map(row=>row.slice());
+  for(const u of round.learned.updates){
+    if(backward()?u.t<t:u.t>t)continue;
+    q[u.s][u.a]=u.value; counts[u.s][u.a]=u.countAfter;
+  }
+  return {q,counts};
+}
+function getView(){
+  const round=current(), v=lesson(), state=round.start;
+  const n=round.ep?.length??0, stage=stageOf(v.cursor,n);
+  const t=stage===1?v.cursor-1:stage===2?(backward()?2*n-v.cursor:v.cursor-n-1):-1;
+  const obs=t>=0?round.ep[t]:null;
+  const policy=stage===3?round.end:state;
+  const focus=obs?.s??(stage===3?round.end.changed[0]:undefined)??state.start;
+  return {round,state,n,stage,t,obs,policy,focus,cell:v.pin??focus,tables:visibleTables(round,stage,t)};
+}
+// Display-only shortest paths for the deterministic zero-step-reward classroom map.
+// No sampling or learning function reads this reference.
+const referenceByMap=new Map();
+function optimalReference(s){
+  if(referenceByMap.has(s.mapName))return referenceByMap.get(s.mapName);
+  const offsets=[[-1,0],[0,1],[1,0],[0,-1]];
+  function neighbor(id,a){
+    const y=Math.floor(id/s.cols)+offsets[a][0], x=id%s.cols+offsets[a][1];
+    if(y<0||y>=s.rows||x<0||x>=s.cols)return -1;
+    const next=y*s.cols+x;
+    return s.cells[next]==='#'?-1:next;
+  }
+  const distance=s.cells.map(()=>Infinity), queue=[s.goal];
+  distance[s.goal]=0;
+  for(let i=0;i<queue.length;i++){
+    const id=queue[i];
+    for(let a=0;a<4;a++){
+      const near=neighbor(id,a);
+      if(near<0||distance[near]!==Infinity)continue;
+      distance[near]=distance[id]+1;
+      queue.push(near);
+    }
+  }
+  // When several routes tie, prefer right, then up, then left, then down.
+  const best=s.cells.map((tile,id)=>{
+    if(!Number.isFinite(distance[id])||tile==='T')return -1;
+    return [1,0,3,2].find(a=>distance[neighbor(id,a)]===distance[id]-1);
+  });
+  const path=new Set();
+  for(let id=s.start;id>=0 && !path.has(id);id=neighbor(id,best[id])){
+    path.add(id);
+    if(id===s.goal||best[id]===undefined||best[id]===-1)break;
+  }
+  const ref={best,path};referenceByMap.set(s.mapName,ref);return ref;
+}
+
+function projectedValue(policy,id,row){
+  return row.reduce((sum,q,action)=>sum+SampleWorld.probability(policy,id,action)*q,0);
+}
+
+function mapRoute(v){
+  const {round,state,stage,t,policy}=v;
+  if(stage===0 || stage===3)return SampleWorld.probePolicy(policy);
+  const observed=stage===1?round.ep.slice(0,t+1):round.ep;
+  return [state.start,...observed.map(o=>o.next)];
+}
+
+function matrix(v){
+  showSampleTransfer(v);
+  const {round,state:s,stage,obs,policy,cell,tables}=v;
+  const left=el('grid'), right=el('valueGrid');
+  const route=mapRoute(v), visits=new Map();
+  route.forEach((id,step)=>{
+    if(!visits.has(id))visits.set(id,[]);
+    visits.get(id).push(step);
+  });
+  const reference=el('optimal').checked?optimalReference(s):null;
+  const stateValues=el('valueMode').value==='v';
+  const update=stage===2?round.byTime.get(v.t):null;
+  let leftHTML='<span aria-hidden="true"></span>';
+  for(let col=0;col<s.cols;col++){
+    const axis=s.mapName==='line'?['A','B','T'][col]:String.fromCharCode(65+col);
+    leftHTML+='<span class="axis">'+axis+'</span>';
+  }
+  let rightHTML=leftHTML;
+  for(const [id,tile] of s.cells.entries()){
+    const name=nameOf(s,id);
+    if(id%s.cols===0){
+      const axis='<span class="axis">'+(s.mapName==='line'?'':Math.floor(id/s.cols)+1)+'</span>';
+      leftHTML+=axis;rightHTML+=axis;
+    }
+    if(tile==='#'){
+      const wall='<div class="cell wall" aria-label="'+name+' 墙"><span class="tileText">墙</span></div>';
+      leftHTML+=wall;rightHTML+=wall;continue;
+    }
+    const steps=visits.get(id);
+    const pathClass=(steps?' routePath':'')+(reference?.path.has(id)?' optimalPath':'');
+    const stepTag=steps?'<span class="routeMark">'+steps[0]+(steps.length>1?'↺':'')+'</span>':'';
+    const arrival=(stage===1||stage===2)&&id===obs.next?' arrive':'';
+    if(tile==='T'){
+      leftHTML+='<div class="cell goal'+pathClass+arrival+'"><span class="tileText">终点 T</span>'+stepTag+'</div>';
+      rightHTML+='<div class="cell goal"><span class="tileText">终点 T</span><span class="tileText small">'+(stateValues?'V̂ = 0':'无动作')+'</span></div>';
+      continue;
+    }
+    const button='type="button" data-cell="'+id+'" aria-pressed="'+(id===cell)+'"';
+    const source=id===s.start?'<span class="origin">起点</span>':'';
+    const a=policy.policy[id], changed=stage===3&&policy.changed.includes(id);
+    const optimalArrow=reference?'<span class="optArrow">优 '+arrows[reference.best[id]]+'</span>':'';
+    const oldArrow=changed?'<span class="oldArrow">原 '+arrows[s.policy[id]]+'</span>':'';
+    leftHTML+='<button '+button+' class="cell'+pathClass+arrival+(changed?' changed':'')+'" aria-label="'+name+'，主方向'+directions[a]+(steps?'，首次在第 '+steps[0]+' 步到达':'')+'">'+
+      '<span class="bigArrow">'+arrows[a]+'</span>'+source+oldArrow+stepTag+optimalArrow+'</button>';
+
+    const counts=tables.counts[id], row=tables.q[id];
+    const written=Boolean(update&&update.s===id);
+    if(stateValues){
+      const value=projectedValue(policy,id,row);
+      const changedValue=written?Math.abs(update.value-update.old)>1e-12:changed&&Math.abs(value-projectedValue(s,id,row))>1e-12;
+      rightHTML+='<button '+button+' class="cell'+(changedValue?' changed':'')+'" aria-label="'+name+'，由策略和 Q 估计的状态价值 '+fmt(value)+'">'+
+        '<span class="value">'+short(value)+'</span>'+source+'</button>';
+    }else{
+      const values=row.map((q,i)=>'<span class="qval d'+i+(counts[i]?'':' unknown')+(written&&update.a===i?' written':'')+'">'+short(q)+'</span>').join('');
+      const alt=row.map((q,i)=>directions[i]+' '+fmt(q)+(counts[i]?'':'，尚未更新')).join('；');
+      rightHTML+='<button '+button+' class="cell qcell'+(written?' flash':'')+'" aria-label="'+name+'，'+alt+'">'+values+(id===s.start?'<span class="origin">S</span>':'')+'</button>';
+    }
+  }
+  for(const grid of [left,right])grid.style.setProperty('--cols',s.cols);
+  left.innerHTML=leftHTML;right.innerHTML=rightHTML;
+  markRouteEdges(left, route, s.cols);
+  let status='';
+  if(stage===0)status='按主方向试走，'+routeSummary(s)+'。';
+  else if(stage===3)status='更新 '+policy.changed.length+' 格。按新主方向试走，'+routeSummary(policy)+'。';
+  else{
+    const action=nameOf(s,obs.s)+' '+arrows[obs.a]+' '+nameOf(s,obs.next);
+    status=(stage===1?'实际采样第 ':'回看样本第 ')+(v.t+1)+' 步：'+action+'。';
+    if(stage===1&&v.t===v.n-1)status+='本回合 '+v.n+' 步，最短 '+minSteps(s)+' 步。';
+  }
+  el('legend').textContent=status+' 大箭头为主方向，边上小箭头为轨迹，角标记首访步号。'+(reference?' 绿字给出一个最优动作，虚线是一条最短路线。':'');
+  el('valueLegend').textContent=stateValues?
+    'V̂(s) = Σₐ π(a|s) Q̂(s,a)。按本图四个动作概率加权；Q 或策略变化时，V̂ 都可能改变。':
+    '四边是上、右、下、左动作的 Q。灰色 0 表示尚未更新，金色标出本步写入的数。';
+}
+function probStrip(s,id){
+  return '<div class="pattern">'+arrows.map((arrow,a)=>'<span class="prob'+(a===s.policy[id]?' main':'')+'">'+arrow+' '+pct(SampleWorld.probability(s,id,a))+'</span>').join('')+'</div>';
+}
+function block(math,caption){
+  return '<div class="formulaBlock"><p class="math">'+math+'</p>'+(caption?'<p class="notation">'+caption+'</p>':'')+'</div>';
+}
+function sampleCard(v){
+  const {obs:o,state:s,t}=v, old=nameOf(s,o.s), next=nameOf(s,o.next);
+  const label=o.a===s.policy[o.s]?'本次抽到主方向':'本次抽到其他方向';
+  const result=o.next===s.goal?'回合结束，用了 '+(t+1)+' 步（地图最短 '+minSteps(s)+' 步）。':o.s===o.next?'这一步留在原格。':'小虫现在位于 '+next+'。';
+  return '<p class="sampleObs">'+old+' '+arrows[o.a]+' '+next+'</p><p>'+label+' '+arrows[o.a]+'，抽中概率 '+pct(SampleWorld.probability(s,o.s,o.a))+'。</p>'+
+    block('(Sₜ, Aₜ, Rₜ₊₁, Sₜ₊₁)','t = '+t+'，本条观测如下。')+
+    '<p class="calculation">('+old+', '+arrows[o.a]+', '+(o.r?'+1':'0')+', '+next+')</p><p>'+result+'</p>';
+}
+function minSteps(s){return s.mapName==='world'?6:2}
+function routeSummary(s){
+  const route=SampleWorld.probePolicy(s), last=route.at(-1);
+  if(last===s.goal)return (route.length-1)+' 步到达终点';
+  const cycle=route.slice(route.indexOf(last));
+  if(cycle.length===2)return '在 '+nameOf(s,last)+' 原地打转';
+  return '在 '+cycle.map(id=>nameOf(s,id)).join(' → ')+' 循环';
+}
+function tdCard(v){
+  const {state:s,round,t}=v, u=round.byTime.get(t);
+  const cur=nameOf(s,u.s)+', '+arrows[u.a];
+  const next=nameOf(s,u.next)+(u.terminal?'':', '+arrows[u.nextAction]);
+  const context='t = '+t+'，(Sₜ,Aₜ) = ('+cur+')；Rₜ₊₁ = '+u.r+'。';
+  const successor=u.terminal?'Sₜ₊₁ 为终点 T，后续项取 0。':'(Sₜ₊₁,Aₜ₊₁) = ('+next+')，读取此刻的 Q('+next+') = '+fmt(u.nextQ)+'。';
+  const targetText=u.terminal?'Y'+sub(t)+' = '+fmt(u.r):
+    'Y'+sub(t)+' = '+u.r+' + 0.9 × '+fmt(u.nextQ)+numRelation(u.target,u.nextQ)+fmt(u.target);
+  const target=block('Yₜ = Rₜ₊₁ + γ Q(Sₜ₊₁, Aₜ₊₁)',successor);
+  const update=block('Q(Sₜ,Aₜ) ← Q(Sₜ,Aₜ) + <span class="factor">αₜ [Yₜ − Q(Sₜ,Aₜ)]</span>',
+    '本次是第 '+u.countAfter+' 次更新 ('+cur+')，αₜ = 1/'+u.countAfter+'。');
+  return '<div class="compactTD"><p class="sample">'+context+'</p>'+target+'<p class="calculation">'+targetText+'</p>'+
+    update+'<p class="calculation">Q('+cur+') ← '+fmt(u.old)+' + ('+fmt(u.target)+' − '+fmt(u.old)+') / '+u.countAfter+numRelation(u.value,u.old,u.target)+fmt(u.value)+'</p></div>';
+}
+function learnCard(v){
+  if(mode==='td')return tdCard(v);
+  const {round,state:s,t,obs:o,n}=v, u=round.byTime.get(t), g=round.learned.returns[t];
+  const later=t===n-1?0:round.learned.returns[t+1];
+  const origin=nameOf(s,o.s), destination=nameOf(s,o.next);
+  const observed='t = '+t+'，(Sₜ,Aₜ,Rₜ₊₁,Sₜ₊₁) = ('+origin+', '+arrows[o.a]+', '+o.r+', '+destination+')。';
+  const gFormula='<p class="notation">'+observed+'</p>'+block('Gₜ = Rₜ₊₁ + γ Gₜ₊₁', t===n-1?'已到终点，后续回报 G'+sub(n)+' = 0。':'从后往前，接上刚算出的 G'+sub(t+1)+'。');
+  const record='<p class="calculation">G'+sub(t)+' = '+o.r+' + 0.9 × '+fmt(later)+numRelation(g,later)+fmt(g)+'</p>';
+  if(!u){
+    const first=round.learned.updates.find(x=>x.s===o.s&&x.a===o.a);
+    return gFormula+record+'<p>同一动作在第 '+(first.t+1)+' 步已出现。回报继续传回前一步，Q 和计数留给首次出现的位置更新。</p>';
+  }
+  const args='('+nameOf(s,o.s)+', '+arrows[o.a]+')';
+  const formula=block('Q(Sₜ,Aₜ) ← Q(Sₜ,Aₜ) + <span class="factor">[Gₜ − Q(Sₜ,Aₜ)] / N(Sₜ,Aₜ)</span>','第 '+(t+1)+' 步是本回合首次访问 '+args+'。计数 N 从 '+u.countBefore+' 增至 '+u.countAfter+'。');
+  return gFormula+record+formula+'<p class="calculation">Q'+args+' = '+fmt(u.old)+' + ('+fmt(g)+' − '+fmt(u.old)+') / '+u.countAfter+numRelation(u.value,u.old,g)+fmt(u.value)+'</p>';
+}
+function improveCard(v){
+  const {state:s,round,cell}=v, old=s.policy[cell], a=round.end.policy[cell], q=round.learned.state.q[cell];
+  const table='<table class="scores"><thead><tr><th>方向</th><th>样本 Q</th><th>旧 π → 新 π</th></tr></thead><tbody>'+
+    q.map((value,i)=>'<tr class="'+(i===a?'best':'')+'"><td>'+arrows[i]+' '+directions[i]+'</td><td>'+fmt(value)+'</td><td>'+pct(SampleWorld.probability(s,cell,i))+' → '+pct(SampleWorld.probability(round.end,cell,i))+'</td></tr>').join('')+'</tbody></table>';
+  return block('a* ∈ arg max<sub>a</sub> Q(s, a)','主方向概率 1 − ε + ε/4，其他各为 ε/4。')+
+    '<p>'+(old===a?'保留主方向 '+arrows[a]+'。':'主方向从 '+arrows[old]+' 改为 '+arrows[a]+'。')+'下一回合按新概率采样。</p>'+table;
+}
+function panel(v){
+  const {state:s,stage,cell,obs,t,tables}=v;
+  let title='', body='', extra='';
+  if(stage===0){
+    title='看 '+nameOf(s,cell)+' 格的选法';
+    body=block('Aₜ ∼ '+pi(s)+'( · | Sₜ )','每走一步都按当前格子的四个概率抽取动作。')+
+      probStrip(s,cell)+'<p>主方向是 '+arrows[s.policy[cell]]+'。以 60% 的概率直接走主方向，以 40% 的概率在四个方向中均匀探索。</p>'+
+      '<p class="soft">'+('仅按主方向试走：'+routeSummary(s)+'。这张图最短 '+minSteps(s)+' 步。')+'</p>';
+  }else if(stage===1){title='观察第 '+(t+1)+' 步';body=sampleCard(v)}
+  else if(stage===2){title='第 '+(t+1)+' 步 · '+nameOf(s,obs.s)+' 向'+directions[obs.a];body=learnCard(v)}
+  else{title='看 '+nameOf(s,cell)+' 格的新策略';body=improveCard(v)}
+  if(lesson().pin!==null){
+    if(el('valueMode').value==='v'){
+      const weights=tables.q[cell].map((q,i)=>fmt(SampleWorld.probability(v.policy,cell,i))+' × '+fmt(q));
+      extra='查看 '+nameOf(s,cell)+' 格　V̂ ≈ '+weights.join(' + ')+' ≈ '+fmt(projectedValue(v.policy,cell,tables.q[cell]))+'。';
+    }else{
+      extra='查看 '+nameOf(s,cell)+' 格的 Q　'+arrows.map((a,i)=>a+' '+fmt(tables.q[cell][i])+'（N='+tables.counts[cell][i]+'）').join('　');
+    }
+  }
+  el('focusTitle').textContent=title;
+  el('inspector').innerHTML=body;
+  el('inspectInfo').textContent=extra;
+  el('inspectInfo').hidden=!extra;
+}
+
+function showReadWrite(source, target){
+  const note=el('transferCue');
+  note.hidden=!source;
+  if(!source)return;
+  note.innerHTML='<span class="cueRead">读</span><span>'+source+'</span><span aria-hidden="true">→</span><span class="cueWrite">写</span><span>'+target+'</span>';
+}
+
+function showSampleTransfer(v){
+  if(v.stage!==2){showReadWrite();return}
+  const u=v.round.byTime.get(v.t);
+  if(!u){
+    const note=el('transferCue');note.hidden=false;
+    note.textContent='本次只回传 G；这个状态动作对的 Q 留到首次访问处更新。';
+    return;
+  }
+  let source;
+  if(mode==='td'){
+    source=u.terminal?'终点 T 的后续值 0':
+      'Q('+nameOf(v.state,u.next)+', '+arrows[u.nextAction]+') = '+fmt(u.nextQ);
+  }else source='回报 G'+sub(v.t)+' = '+fmt(u.g);
+  const dest='Q('+nameOf(v.state,u.s)+', '+arrows[u.a]+') = '+fmt(u.value);
+  showReadWrite(source,dest);
+}
+function records(v){
+  const {round,state:s,stage,t,n}=v;
+  const seen=stage===0?0:stage===1?t+1:n;
+  el('traceTitle').textContent='本回合样本记录（'+seen+' 步）';
+  if(!el('trace').open)return;
+  if(seen===0){el('records').innerHTML='<p>小虫走出第一步后，这里会记下观察结果。</p>';return}
+  const rows=round.ep.slice(0,seen).map((o,i)=>{
+    const known=stage===3 || (stage===2 && (backward()?i>=t:i<=t));
+    const target=mode==='td'?round.byTime.get(i).target:round.learned.returns[i];
+    return '<tr class="'+(i===t?'now':'')+'"><td>'+(i+1)+'</td><td>'+nameOf(s,o.s)+'</td><td>'+arrows[o.a]+'</td><td>'+o.r+'</td><td>'+nameOf(s,o.next)+'</td><td>'+(known?fmt(target):'—')+'</td></tr>';
+  }).join('');
+  el('records').innerHTML='<div class="traceWrap"><table><thead><tr><th>步</th><th>出发</th><th>动作</th><th>奖励</th><th>到达</th><th>'+(mode==='td'?'目标 Y':'回报 G')+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function draw(){
+  const v=getView(), {state:s,stage,t,n}=v;
+  const stages=['看当前策略','按策略采样',mode==='td'?'用一步目标更新 Q':'用完整回报更新 Q','更新策略'];
+  el('stages').innerHTML=stages.map((name,i)=>'<span class="stage'+(stage===i?' active':'')+'"'+(stage===i?' aria-current="step"':'')+'><span class="num">'+(i+1)+'</span>'+name+'</span>').join('');
+  const titles=['固定本回合的策略 '+pi(s),'小虫走出第 '+(t+1)+' 步',(backward()?'从终点倒推':'从起点顺推')+' · 处理第 '+(t+1)+' 步','根据样本 Q 改进策略'];
+  el('round').textContent='第 '+(s.round+1)+' 回合 · 第 '+(stage+1)+' 阶段';
+  el('title').textContent=titles[stage];
+  matrix(v);panel(v);records(v);
+  el('back').disabled=s.round===0&&lesson().cursor===0;
+  el('orderLabel').hidden=mode!=='td';
+  const lastBackup=backward()?t===0:t===n-1;
+  const labels=['按策略走第一步 →',t===n-1?(backward()?'从最后一步倒推 →':'更新第一条样本 →'):'采下一步 →',lastBackup?'用 Q 更新策略 →':(backward()?'往前更新一步 →':'更新下一条样本 →'),'开始下一回合 →'];
+  el('step').textContent=labels[stage];
+  el('skip').hidden=!(stage===1&&t<n-1 || stage===2&&!lastBackup);
+  el('skip').textContent=stage===1?'采样到终点':'完成本轮 Q 更新';
+}
+function playbackButton(){
+  el('play').textContent=timer?'Ⅱ 暂停':'▶ 自动播放';
+  el('play').setAttribute('aria-pressed',String(Boolean(timer)));
+}
+function stopPlayback(){clearInterval(timer);timer=null;playbackButton()}
+function startPlayback(){
+  clearInterval(timer);
+  timer=setInterval(()=>{advance();draw()},1200/Number(el('speed').value));
+  playbackButton();
+}
+el('play').onclick=()=>{if(timer)stopPlayback();else startPlayback()};
+el('speed').onchange=()=>{if(timer)startPlayback()};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopPlayback()});
+el('map').onchange=e=>{stopPlayback();mapName=e.target.value;draw()};
+el('replayOrder').onchange=e=>{stopPlayback();replayOrder=e.target.value;draw()};
+el('mode').onchange=e=>{stopPlayback();mode=e.target.value;draw()};
+el('step').onclick=()=>{stopPlayback();advance();draw()};
+el('back').onclick=()=>{stopPlayback();back();draw()};
+el('skip').onclick=()=>{stopPlayback();const v=getView();lesson().cursor=v.stage===1?v.n:2*v.n;lesson().pin=null;draw()};
+el('reset').onclick=()=>{stopPlayback();sessions.set(lessonKey(),newLesson());draw()};
+el('trace').ontoggle=()=>records(getView());
+function selectCell(event){
+  const btn=event.target.closest('[data-cell]');
+  if(!btn)return;
+  stopPlayback();
+  const selected=Number(btn.dataset.cell);
+  lesson().pin=selected;
+  for(const grid of [el('grid'),el('valueGrid')]){
+    for(const tile of grid.querySelectorAll('[data-cell]'))tile.setAttribute('aria-pressed',String(Number(tile.dataset.cell)===selected));
+  }
+  panel(getView());
+}
+el('grid').onclick=selectCell;
+el('valueGrid').onclick=selectCell;
+el('optimal').onchange=()=>{stopPlayback();draw()};
+el('valueMode').onchange=()=>{stopPlayback();draw()};
+draw();
+
+</script></body></html>
